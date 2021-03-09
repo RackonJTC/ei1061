@@ -6,8 +6,12 @@ import sys
 # Memoria con capacidad para 32 instrucciones de 32 bits, desde 0 a 31
 # Memoria de datos con capacidad para 31 numeros de 32 bits, desde 0 a 31
 
-class instruccion:
-    operaciones = ["lw", "sw", "add", "sub"]
+class Instruccion:
+    operacion = None
+    id_rd = None
+    id_rs = None
+    id_rt = None
+    inm = None
 
     def __init__(self, operacion, id_rd, id_rs, id_rt, inm):
         self.operacion = operacion
@@ -30,6 +34,15 @@ class instruccion:
 
     def getInm(self):
         return self.inm
+
+    def toSring(self):
+        if self.operacion=="NOP":
+            return "NOP"
+        if self.operacion=="sw":
+            return self.operacion + " " + self.id_rs + ", " + self.id_rt
+        if self.operacion=="lw":
+            return self.operacion + " " + self.id_rd + ", " + self.id_rs
+        return self.operacion + " " + self.id_rd + ", " + self.id_rs + ", " + self.id_rt
 
 class Reg_IF_ID:
     instruccion = None
@@ -267,7 +280,11 @@ class Reg_MEM_WB:
 # ******************************************************************************************************
 #    SIMULADOR
 # ******************************************************************************************************
-
+def ejecutaInstruccion(self, instruccion):
+    registros = {'r0': None, 'r1': None,'r2': None,'r3': None,'r4': None,'r5': None,'r6': None,
+                 'r7': None,'r8': None,'r9': None,'r10': None,'r11': None,'r12': None,
+                 'r13': None,'r14': None,'r15': None,}
+    operaciones = ["lw", "sw", "add", "sub"]
 
 
 
@@ -279,6 +296,30 @@ def leerFichero():
     lineas = sys.stdin.readlines()
     return lineas
 
+def crearInstrucciones(entrada):
+
+    instrucciones = list()
+
+    for linea in entrada:
+        elem = linea.rstrip("\n").split(" ")
+        if elem[0] == "lw":
+            inst = Instruccion(operacion=elem[0], id_rd=elem[1], id_rs=elem[2], inm=elem[2], id_rt=" ")
+        elif elem[0] == "sw":
+            inst = Instruccion(operacion=elem[0], id_rt=elem[2], id_rs=elem[1], inm=elem[2], id_rd=" ")
+        else:
+            inst = Instruccion(operacion=elem[0], id_rd=elem[1], id_rs=elem[2], id_rt=elem[3], inm=" ")
+
+        if len(instrucciones) != 0:
+            instAnt = instrucciones[-1]
+            if instAnt.getOperacion() == "lw":
+                if inst.getOperacion() == "add" or inst.getOperacion() == "sub":
+                    if inst.getRt() == instAnt.getRd() or inst.getRs() == instAnt.getRd():
+                        instrucciones.append(Instruccion(operacion="NOP", id_rd=" ", id_rs=" ", id_rt=" ", inm=" "))
+
+        instrucciones.append(inst)
+
+    return instrucciones
+
 # ******************************************************************************************************
 #    MAIN
 # ******************************************************************************************************
@@ -286,32 +327,15 @@ def leerFichero():
 if __name__ == '__main__':
 
     entrada = [a for a in leerFichero()]
-    for linea in entrada:
-        elem = linea.rstrip("\n").split(" ")
-        print(elem)
+    instrucciones= crearInstrucciones(entrada)
+
+    print(" ")
+    print("Sea un programa formado por las siguientes instrucciones: ")
+    for elem in instrucciones:
+        print("  " + elem.toSring())
+    print(" ")
+    print("Simulación ejecución: ")
+    i=1
+    print("  Ciclo " + str(i) + ":")
 
 
-
-    # registros = [0] * 16
-    # memInstrucciones = [None] * 32
-    # memDatos = [None] * 32
-    #
-    #
-    # def IF():
-    #     pass
-    #
-    #
-    # def ID():
-    #     pass
-    #
-    #
-    # def EX():
-    #     pass
-    #
-    #
-    # def MEM():
-    #     pass
-    #
-    #
-    # def WB():
-    #     pass
