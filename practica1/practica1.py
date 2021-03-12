@@ -6,7 +6,7 @@ import sys
 # Memoria con capacidad para 32 instrucciones de 32 bits, desde 0 a 31
 # Memoria de datos con capacidad para 31 numeros de 32 bits, desde 0 a 31
 
-class Instruccion:
+class Instruccion:  # add rd=r4 rs=r0 rt=r3
     operacion = None
     id_rd = None
     id_rs = None
@@ -255,7 +255,7 @@ def ejecutaInstruccion(instruccion, registros):
 
     return registrosNuevos
 
-def ejecutaEtapa(etapa, instruccion, registros, pc, registro ):
+def ejecutaEtapa(etapa, instruccion, registros, PC, registro ):
 
     if instruccion.getOperacion() == "NOP":
         return registros, registro
@@ -271,7 +271,7 @@ def ejecutaEtapa(etapa, instruccion, registros, pc, registro ):
             registro.setTipo("MEM")
         else:
             registro.setTipo("ALU")
-        print("  Etapa IF de I" + pc +": Mostrando contenido del registro RS_IF_ID")
+        print("  Etapa IF de I" + PC +": Mostrando contenido del registro RS_IF_ID")
         print("    Instrucción: " + registro.getInstruccion().toSring())
         print("    Tipo: " + registro.getTipo())
         print("    Operación: " + registro.getOperacion())
@@ -293,7 +293,7 @@ def ejecutaEtapa(etapa, instruccion, registros, pc, registro ):
             registro.setTipo("MEM")
         else:
             registro.setTipo("ALU")
-        print("  Etapa ID/OF de I" + pc +": Mostrando contenido del registro RS_ID_EX")
+        print("  Etapa ID/OF de I" + PC +": Mostrando contenido del registro RS_ID_EX")
         print("    Instrucción: " + registro.getInstruccion().toSring())
         print("    Tipo: " + registro.getTipo())
         print("    Operación: " + registro.getOperacion())
@@ -320,7 +320,7 @@ def ejecutaEtapa(etapa, instruccion, registros, pc, registro ):
             if instruccion.getOperacion()=="sub":
                 almALU = int(registros[instruccion.getRs()]) - int(registros[instruccion.getRt()])
                 registro.setRes(almALU)
-        print("  Etapa EX de I" + pc +": Mostrando contenido del registro RS_EX_MEM")
+        print("  Etapa EX de I" + PC +": Mostrando contenido del registro RS_EX_MEM")
         print("    Instrucción: " + registro.getInstruccion().toSring())
         print("    Tipo: " + registro.getTipo())
         print("    Operación: " + instruccion.getOperacion())
@@ -343,7 +343,7 @@ def ejecutaEtapa(etapa, instruccion, registros, pc, registro ):
             registro.setTipo("MEM")
         else:
             registro.setTipo("ALU")
-        print("  Etapa MEM de I" + pc +": Mostrando contenido del registro RS_MEM_WB")
+        print("  Etapa MEM de I" + PC +": Mostrando contenido del registro RS_MEM_WB")
         print("    Instrucción: " + registro.getInstruccion().toSring())
         print("    Tipo: " + registro.getTipo())
         print("    Operación: " + instruccion.getOperacion())
@@ -358,7 +358,7 @@ def ejecutaEtapa(etapa, instruccion, registros, pc, registro ):
     if etapa == "WB":
         nuevosRegistros = registros
         ejecutaInstruccion(instruccion,registros)
-        print("  Etapa WB de I" + pc)
+        print("  Etapa WB de I" + PC)
         return nuevosRegistros, registro
 
 
@@ -370,7 +370,7 @@ def leerFichero():
     lineas = sys.stdin.readlines()
     return lineas
 
-def crearInstrucciones(entrada):
+def cargaInstruccionesMemoria(entrada):
 
     instrucciones = list()
 
@@ -402,28 +402,56 @@ def crearInstrucciones(entrada):
 
 if __name__ == '__main__':
 
+    #Cargamos en memoria las instrucciones
     entrada = [a for a in leerFichero()]
-    instrucciones= crearInstrucciones(entrada)
+    instrucciones= cargaInstruccionesMemoria(entrada)
+
+    #Inicializacion de los registros de segmentación
+    reg_IF_ID = Reg_IF_ID()
+    reg_ID_EX = Reg_ID_EX()
+    reg_EX_MEM = Reg_EX_MEM()
+    reg_MEM_WB = Reg_MEM_WB()
+
+    #Inicailizamos los registros
     registros = {'r0': 0, 'r1': 1,'r2': 2,'r3': 3,'r4': 4,'r5': 5,'r6': 6,
                  'r7': 7,'r8': 8,'r9': 9,'r10': 10,'r11': 11,'r12': 12,
                  'r13': 13,'r14': 14,'r15': 15}
     registro = None
+    
+    #Dirección de la instrucción
+    PC=0
 
+    #Variables varias
+    contInstrucciones = 0
+    contCiclos = 1
+    finSimulador = False
+
+
+    #Imprimimos la salida del simulador -> Programa Principal <-
     print(" ")
     print("Sea un programa formado por las siguientes instrucciones: ")
     for elem in instrucciones:
         print("  " + elem.toSring())
     print(" ")
     print("Simulación ejecución: ")
-    i=1
-    for elem in instrucciones:
-        print("-------------------------- Ciclo " + str(i) + ": --------------------------")
-        registros, registro = ejecutaEtapa("IF",instrucciones[i-1],registros,str(i), registro)
-        registros, registro = ejecutaEtapa("ID/OF", instrucciones[i-1], registros, str(i), registro)
-        registros, registro = ejecutaEtapa("EX", instrucciones[i-1], registros, str(i), registro)
-        registros, registro = ejecutaEtapa("MEM", instrucciones[i-1], registros, str(i), registro)
-        registros, registro = ejecutaEtapa("WB", instrucciones[i-1], registros, str(i), registro)
-        i=i+1
+
+    while not (finSimulador):
+
+        print("-------------------------- Ciclo " + str(contCiclos) + ": --------------------------")
+
+        #AQUI ESTAMOS
+
+
+
+        registros, registro = ejecutaEtapa("IF",instrucciones[PC],registros,str(contCiclos), registro)
+        registros, registro = ejecutaEtapa("ID/OF", instrucciones[PC], registros, str(contCiclos), registro)
+        registros, registro = ejecutaEtapa("EX", instrucciones[PC], registros, str(contCiclos), registro)
+        registros, registro = ejecutaEtapa("MEM", instrucciones[PC], registros, str(contCiclos), registro)
+        registros, registro = ejecutaEtapa("WB", instrucciones[PC], registros, str(contCiclos), registro)
+        PC=PC+1
+
+        print(registros)
+        finSimulador = True
 
 
 
