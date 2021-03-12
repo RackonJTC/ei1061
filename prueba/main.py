@@ -28,7 +28,7 @@ reg = [a for a in range(0,16)]
 
 # Memoria de instrucciones
 # memIns[0] ... memIns[31]
-memIns = []
+memDat = [a for a in range(0,32)]
 
 # Memoria de datos
 # memDat[0] ... memDat[31]
@@ -215,6 +215,7 @@ def cargaMemoria(fichero):
         memIns.append(linea.rstrip())
         i+=1
     memIns.append(FIN)
+    print(memIns)
 
 def main(codigo):
     global salto
