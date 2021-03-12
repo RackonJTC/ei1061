@@ -168,14 +168,6 @@ class Reg_EX_MEM:
     res = None
     op2 = None
 
-    def __init__(self, instruccion, tipo, id_rt, id_rd, res, op2):
-        self.instruccion = instruccion
-        self.tipo = tipo
-        self.id_rt = id_rt
-        self.id_rd = id_rd
-        self.res= res
-        self.op2 = op2
-
     def getInstruccion(self):
         return self.instruccion
 
@@ -218,14 +210,6 @@ class Reg_MEM_WB:
     id_rt = None
     id_rd = None
     res = None
-
-    def __init__(self, instruccion, tipo, id_rt, id_rd, res, op2):
-        self.instruccion = instruccion
-        self.tipo = tipo
-        self.id_rt = id_rt
-        self.id_rd = id_rd
-        self.res= res
-        self.op2 = op2
 
     def getInstruccion(self):
         return self.instruccion
@@ -271,8 +255,10 @@ def ejecutaInstruccion(instruccion, registros):
 
     return registrosNuevos
 
-def ejecutaEtapa(etapa, instruccion, registros, numInst ):
+def ejecutaEtapa(etapa, instruccion, registros, pc, registro ):
 
+    if instruccion.getOperacion() == "NOP":
+        return registros, registro
     if etapa == "IF":
         registro = Reg_IF_ID()
         registro.setInstruccion(instruccion)
@@ -285,14 +271,13 @@ def ejecutaEtapa(etapa, instruccion, registros, numInst ):
             registro.setTipo("MEM")
         else:
             registro.setTipo("ALU")
-        registrosNuevos = ejecutaInstruccion(instruccion, registros)
-        print("  Etapa IF de I" + numInst +": Mostrar contenido del registro RS_IF_ID")
+        print("  Etapa IF de I" + pc +": Mostrando contenido del registro RS_IF_ID")
         print("    Instrucción: " + registro.getInstruccion().toSring())
         print("    Tipo: " + registro.getTipo())
         print("    Operación: " + registro.getOperacion())
         print("    Rs: " + registro.getRs() + ", Rt: " + registro.getRt() +
               ", Rd: " + registro.getRd() + ", Inm: " + str(registro.getInm()))
-        return registrosNuevos
+        return registros, registro
 
     if etapa == "ID/OF":
         registro = Reg_ID_EX()
@@ -308,8 +293,7 @@ def ejecutaEtapa(etapa, instruccion, registros, numInst ):
             registro.setTipo("MEM")
         else:
             registro.setTipo("ALU")
-        registrosNuevos = ejecutaInstruccion(instruccion, registros)
-        print("  Etapa ID/OF de I" + numInst +": Mostrar contenido del registro RS_ID_EX")
+        print("  Etapa ID/OF de I" + pc +": Mostrando contenido del registro RS_ID_EX")
         print("    Instrucción: " + registro.getInstruccion().toSring())
         print("    Tipo: " + registro.getTipo())
         print("    Operación: " + registro.getOperacion())
@@ -318,9 +302,65 @@ def ejecutaEtapa(etapa, instruccion, registros, numInst ):
                   ", Op1: " + str(registro.getOp1()) + ", Op2: " + str(registro.getOp2()))
         else:
             print("    Rt: " + registro.getRt() + ", Rs: " + registro.getRs() + ", Inm: " + str(registro.getInm()))
-        return registrosNuevos
+        return registros, registro
 
-    #TODO FALTA ETAPA EX, MEM Y WB
+    if etapa == "EX":
+        registro = Reg_EX_MEM()
+        registro.setInstruccion(instruccion)
+        registro.setRd(instruccion.getRd())
+        registro.setRt(instruccion.getRt())
+        registro.setOp2(registros[instruccion.getRt()])
+        if instruccion.getOperacion() == "sw" or instruccion.getOperacion() == "lw":
+            registro.setTipo("MEM")
+        else:
+            registro.setTipo("ALU")
+            if instruccion.getOperacion()=="add":
+                almALU = int(registros[instruccion.getRs()])+int(registros[instruccion.getRt()])
+                registro.setRes(almALU)
+            if instruccion.getOperacion()=="sub":
+                almALU = int(registros[instruccion.getRs()]) - int(registros[instruccion.getRt()])
+                registro.setRes(almALU)
+        print("  Etapa EX de I" + pc +": Mostrando contenido del registro RS_EX_MEM")
+        print("    Instrucción: " + registro.getInstruccion().toSring())
+        print("    Tipo: " + registro.getTipo())
+        print("    Operación: " + instruccion.getOperacion())
+        if registro.getTipo() == "ALU":
+            print("    Rs: " + instruccion.getRs() + ", Rt: " + registro.getRt() + ", Rd: " + registro.getRd() +
+                  ", Op1: " + str(registros[instruccion.getRs()]) + ", Op2: " + str(registro.getOp2()))
+            print("    Resultado: " + str(registro.getRes()))
+        else:
+            print("    Rt: " + registro.getRt() + ", Rs: " + instruccion.getRs() + ", Inm: " + str(instruccion.getInm()))
+        return registros, registro
+
+    if etapa == "MEM":
+        reg_EX_MEM = registro
+        registro = Reg_MEM_WB()
+        registro.setInstruccion(instruccion)
+        registro.setRes(reg_EX_MEM.getRes())
+        registro.setRd(instruccion.getRd())
+        registro.setRt(instruccion.getRt())
+        if instruccion.getOperacion() == "sw" or instruccion.getOperacion() == "lw":
+            registro.setTipo("MEM")
+        else:
+            registro.setTipo("ALU")
+        print("  Etapa MEM de I" + pc +": Mostrando contenido del registro RS_MEM_WB")
+        print("    Instrucción: " + registro.getInstruccion().toSring())
+        print("    Tipo: " + registro.getTipo())
+        print("    Operación: " + instruccion.getOperacion())
+        if registro.getTipo() == "ALU":
+            print("    Rs: " + instruccion.getRs() + ", Rt: " + registro.getRt() + ", Rd: " + registro.getRd() +
+                  ", Op1: " + str(registros[instruccion.getRs()]) + ", Op2: " + str(registros[instruccion.getRt()]))
+            print("    Resultado: " + str(registro.getRes()))
+        else:
+            print("    Rt: " + registro.getRt() + ", Rs: " + instruccion.getRs() + ", Inm: " + str(instruccion.getInm()))
+        return registros, registro
+
+    if etapa == "WB":
+        nuevosRegistros = registros
+        ejecutaInstruccion(instruccion,registros)
+        print("  Etapa WB de I" + pc)
+        return nuevosRegistros, registro
+
 
 # ******************************************************************************************************
 #    METODO DE ENTRADA Y SALIDA
@@ -367,6 +407,7 @@ if __name__ == '__main__':
     registros = {'r0': 0, 'r1': 1,'r2': 2,'r3': 3,'r4': 4,'r5': 5,'r6': 6,
                  'r7': 7,'r8': 8,'r9': 9,'r10': 10,'r11': 11,'r12': 12,
                  'r13': 13,'r14': 14,'r15': 15}
+    registro = None
 
     print(" ")
     print("Sea un programa formado por las siguientes instrucciones: ")
@@ -375,11 +416,14 @@ if __name__ == '__main__':
     print(" ")
     print("Simulación ejecución: ")
     i=1
-    # for elem in instrucciones:
-    print("  Ciclo " + str(i) + ":")
-    registros = ejecutaEtapa("IF",instrucciones[0],registros,str(i))
-    registros = ejecutaEtapa("ID/OF", instrucciones[0], registros, str(i))
-        # i=i+1
+    for elem in instrucciones:
+        print("-------------------------- Ciclo " + str(i) + ": --------------------------")
+        registros, registro = ejecutaEtapa("IF",instrucciones[i-1],registros,str(i), registro)
+        registros, registro = ejecutaEtapa("ID/OF", instrucciones[i-1], registros, str(i), registro)
+        registros, registro = ejecutaEtapa("EX", instrucciones[i-1], registros, str(i), registro)
+        registros, registro = ejecutaEtapa("MEM", instrucciones[i-1], registros, str(i), registro)
+        registros, registro = ejecutaEtapa("WB", instrucciones[i-1], registros, str(i), registro)
+        i=i+1
 
 
 

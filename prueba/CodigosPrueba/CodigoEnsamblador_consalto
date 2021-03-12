@@ -1,0 +1,5 @@
+sub r6, r6, r6
+add r7, r7, r7
+add r8, r8, r8
+beqz r6, -4
+add r9, r9, r6
