@@ -401,4 +401,4 @@ def main(codigo):
 
 
 if __name__ == "__main__":
-    main("CodigoEnsamblador3")
+    main("CodigoEnsamblador_deps")
