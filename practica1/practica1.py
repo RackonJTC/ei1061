@@ -253,6 +253,8 @@ def ejecutaInstruccion(instruccion, registros):
     registrosNuevos = registros
     if instruccion.getOperacion() == "lw":
         registrosNuevos[instruccion.getRt()] = registros.get(instruccion.getRs()) + instruccion.getInm()
+    if instruccion.getOperacion() == "sw":
+        registrosNuevos[instruccion.getRs()] = registros[instruccion.getRt()]
     if instruccion.getOperacion() == "add":
         registrosNuevos[instruccion.getRd()] = registros.get(instruccion.getRs()) + registros.get(instruccion.getRt())
     if instruccion.getOperacion() == "sub":
@@ -340,51 +342,36 @@ if __name__ == '__main__':
         #    PROCESO DE DETECCIÓN DE RIESGOS
         # ******************************************************************************************************
 
+        # LOAD + ALU
+        if (reg_ID_EX.id_rs == reg_EX_MEM.id_rt and reg_ID_EX.getTipo() == "ALU" and reg_EX_MEM.operacion == "lw"):
+            contCiclos += 1
+            reg_ID_EX.op1 = reg_EX_MEM.res
+            # print("HELLO BUENAS")
+        if (reg_ID_EX.id_rt == reg_EX_MEM.id_rt and reg_ID_EX.getTipo() == "ALU" and reg_EX_MEM.operacion == "lw"):
+            contCiclos += 1
+            reg_ID_EX.op2 = reg_EX_MEM.res
+            # print("HELLO BUENAS")
+
         # ALU + ALU
-        if (reg_ID_EX.id_rs != ""):
-            if (reg_ID_EX.id_rs == reg_EX_MEM.id_rd):
-                if (reg_EX_MEM.getTipo() == "ALU"):
-                    if (reg_ID_EX.getTipo() == "ALU"):
-                        reg_ID_EX.op1 = reg_EX_MEM.res
-        if (reg_ID_EX.id_rt != ""):
-            if (reg_ID_EX.id_rt == reg_EX_MEM.id_rd):
-                if (reg_EX_MEM.getTipo() == "ALU"):
-                    if (reg_ID_EX.getTipo() == "ALU"):
-                        reg_ID_EX.op2 = reg_EX_MEM.res
+        if (reg_ID_EX.id_rs == reg_EX_MEM.id_rd and reg_EX_MEM.getTipo() == "ALU" and reg_ID_EX.getTipo() == "ALU"):
+            reg_ID_EX.op1 = reg_EX_MEM.res
+            # print("HELLO BUENAS2")
+        if (reg_ID_EX.id_rt == reg_EX_MEM.id_rd and reg_EX_MEM.getTipo() == "ALU" and reg_ID_EX.getTipo() == "ALU"):
+            reg_ID_EX.op2 = reg_EX_MEM.res
+            # print("HELLO BUENAS2")
 
         # ALU + INSTRUCCIÓN + ALU
-        if (reg_ID_EX.id_rs != ""):
-            if (reg_ID_EX.id_rs == reg_MEM_WB.id_rd):
-                if (reg_MEM_WB.getTipo() == "ALU"):
-                    if (reg_ID_EX.getTipo() == "ALU"):
-                        reg_ID_EX.op1 = reg_MEM_WB.res
-        if (reg_ID_EX.id_rt != ""):
-            if (reg_ID_EX.id_rt == reg_MEM_WB.id_rd):
-                if (reg_MEM_WB.getTipo() == "ALU"):
-                    if (reg_ID_EX.getTipo() == "ALU"):
-                        reg_ID_EX.op2 = reg_MEM_WB.res
-
-        # LOAD + ALU
-        if (reg_ID_EX.id_rs != ""):
-            if (reg_ID_EX.id_rs == reg_EX_MEM.id_rt):
-                if (reg_ID_EX.getTipo() == "ALU"):
-                    if (reg_EX_MEM.operacion == "lw"):
-                        cicloParada = True
-                        reg_ID_EX.op1 = reg_EX_MEM.res
-
-        if (reg_ID_EX.id_rt != ""):
-            if (reg_ID_EX.id_rt == reg_EX_MEM.id_rt):
-                if (reg_ID_EX.getTipo() == "ALU"):
-                    if (reg_EX_MEM.operacion == "lw"):
-                        cicloParada = True
-                        reg_ID_EX.op2 = reg_EX_MEM.res
+        if (reg_ID_EX.id_rs == reg_MEM_WB.id_rd and reg_MEM_WB.getTipo() == "ALU" and reg_ID_EX.getTipo() == "ALU"):
+            reg_ID_EX.op1 = reg_MEM_WB.res
+            # print("HELLO BUENAS3")
+        if (reg_ID_EX.id_rt == reg_MEM_WB.id_rd and reg_MEM_WB.getTipo() == "ALU" and reg_ID_EX.getTipo() == "ALU"):
+            reg_ID_EX.op2 = reg_MEM_WB.res
+            # print("HELLO BUENAS3")
 
         # ALU + STORE
-        if (reg_EX_MEM.id_rt != ""):
-            if (reg_EX_MEM.id_rt == reg_MEM_WB.id_rd):
-                if (reg_EX_MEM.operacion == "sw"):
-                    if (reg_MEM_WB.getTipo() == "ALU"):
-                        reg_EX_MEM.op2 = reg_MEM_WB.res
+        if (reg_EX_MEM.id_rt == reg_MEM_WB.id_rd and reg_EX_MEM.operacion == "sw" and reg_MEM_WB.getTipo() == "ALU"):
+            reg_EX_MEM.op2 = reg_MEM_WB.res
+            # print("HELLO BUENAS4")
 
 
         # ******************************************************************************************************
