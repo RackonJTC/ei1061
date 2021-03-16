@@ -1,0 +1,4 @@
+lw r1 4(r0)
+add r2 r1 r1
+sub r2 r2 r1
+sw r2 6(r0)
