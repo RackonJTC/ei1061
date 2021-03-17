@@ -226,7 +226,8 @@ def ejecutaEtapa(etapa, instruccion):
             print("Resultado: " + str(res))
         else:
             print(
-                "Rt: " + rt + " | Rs: " + instruccion.getRs() + " | Inm: " + str(instruccion.getInm()))
+                "Rt: " + rt + " | Rs: " + instruccion.getRs() + " | Dato Rs: " + str(registros[instruccion.getRs()]) + " | Inm: " + str(instruccion.getInm()), end=" | ")
+            print("Resultado (rs+inm): " + str(res))
         return instruccion
 
     if etapa == "MEM":

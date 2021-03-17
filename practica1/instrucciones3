@@ -1,4 +1,4 @@
-lw r1 4(r0)
-add r2 r1 r1
-sub r2 r2 r1
-sw r2 6(r0)
+lw r1 8(r0)
+lw r2 10(r0)
+add r3 r1 r2
+sw r3 12(r0)
