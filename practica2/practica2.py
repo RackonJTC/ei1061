@@ -1,10 +1,8 @@
+import sys
+
 
 #Juego de instrucciones. Código de operación
-add=1
-sub=2
-lw=3
-sw=4
-mult=5
+codOperacion = ["NOP","add", "sub", "lw", "sw", "mult"]
 
 #Capacidad de las estructuras de almacenamiento es ilimitada pero se pone una máxima
 REG=16
@@ -27,19 +25,39 @@ ISS=1
 EX=2
 WB=3
 
-class Instruccion:
-    cod=""
-    rd=""
-    rs=""
-    rt=""
-    inmediato=0
+# Memoria de instrucciones
+instrucciones = [a for a in range(0,INS)]
 
-    def __init__(self, cod, rd, rs, rt, inmediato):
+# Memoria de datos
+memDatos = [a for a in range(0,DAT)]
+
+# Registros
+registros = [a for a in range(0,REG)]
+
+class Instruccion:
+    cod=-1
+    rd=-1
+    rs=-1
+    rt=-1
+    inmediato=0
+    numInst = -1
+
+    def __init__(self, cod, rd, rs, rt, inmediato,numInst):
         self.cod = cod
         self.rd = rd
         self.rs = rs
         self.rt = rt
         self.inmediato = inmediato
+        self.numInst = numInst
+
+    def toSring(self):
+        if self.cod == 0:
+            return "NOP"
+        if self.cod == 4:
+            return codOperacion[self.cod] + " " + "r" + str(self.rt) + ", " + str(self.inmediato) + "(" + "r" + str(self.rs) + ")"
+        if self.cod == 3:
+            return codOperacion[self.cod] + " " + "r" + str(self.rt) + ", " + str(self.inmediato) + "(" + "r" + str(self.rs) + ")"
+        return codOperacion[self.cod] + " " + "r" + str(self.rd) + ", " + "r" + str(self.rs) + ", " + "r" + str(self.rt)
 
 class Reg:
     contenido=0
@@ -76,3 +94,115 @@ class ER:
         self.opb_ok = opb_ok
         self.clk_tick_ok_b = clk_tick_ok_b
         self.inmediato = inmediato
+
+class ROB:
+    TAG_ROB = -1
+    linea_valida = -1
+    destino = -1
+    valor = -1
+    clk_tick_ok = -1
+    etapa = -1
+
+    def __init__(self, TAG_ROB, linea_valida, destino, valor, clk_tick_ok, etapa):
+        self.TAG_ROB = TAG_ROB
+        self.linea_valida = linea_valida
+        self.destino = destino
+        self.valor = valor
+        self.clk_tick_ok = clk_tick_ok
+        self.etapa = etapa
+
+class UF: #Unidad funcional
+    uso = -1
+    cont_ciclos = -1
+    TAG_ROB = -1
+    opa = -1
+    opb = -1
+    operacion = -1
+    res = -1
+    res_ok = -1
+    clk_tick_ok = -1
+
+    def __int__(self, uso, cont_ciclos, TAG_ROB, opa, opb, operacion, res, res_ok, clk_tick_ok):
+        self.uso = uso
+        self.cont_ciclos = cont_ciclos
+        self.TAG_ROB = TAG_ROB
+        self.opa = opa
+        self.opb = opb
+        self.operacion = operacion
+        self.res = res
+        self.res_ok = res_ok
+        self.clk_tick_ok = clk_tick_ok
+
+# ******************************************************************************************************
+#    ETAPAS
+# ******************************************************************************************************
+
+# def etapa_commit(instruccion):
+#
+#     #Retirar la instrucción contenida en ROB y apuntada por p_rob_cabeza si se ha ejecutado su etapa WB
+#     # en un ciclo anterior. En otro caso no hace nada
+#
+#
+
+
+# ******************************************************************************************************
+#    METODO DE ENTRADA Y SALIDA
+# ******************************************************************************************************
+
+def leerFichero():
+    lineas = sys.stdin.readlines()
+    return lineas
+
+def cargaInstruccionesMemoria(entrada):
+    instrucciones = list()
+    i = 1
+    cod=-1
+    for linea in entrada:
+        elem = linea.rstrip("\n").split(" ")
+        if elem[0] == "add":
+            cod=1
+        if elem[0] == "sub":
+            cod=2
+        if elem[0] == "lw":
+            cod=3
+        if elem[0] == "sw":
+            cod=4
+        if elem[0] == "mult":
+            cod=5
+        if cod == 3 or cod == 4:
+            elem2 = elem[2].split("(")
+            inm = int(elem2[0])
+            elem3 = elem2[1].split(")")
+            rs = int(elem3[0][1])
+            inst = Instruccion(cod=cod, rt=int(elem[1][1]), rs=rs, inmediato=inm, rd=-1, numInst=i)
+        else:
+            inst = Instruccion(cod=cod, rd=int(elem[1][1]), rs=int(elem[2][1]), rt=int(elem[3][1]), inmediato=0, numInst=i)
+
+        if len(instrucciones) != 0:
+            instAnt = instrucciones[-1]
+            if instAnt.cod == 3:
+                if inst.cod == 1 or inst.cod == 2:
+                    if inst.rt == instAnt.rt or inst.rs == instAnt.rt:
+                        instrucciones.append(
+                            Instruccion(cod=0, rd=0, rs=0, rt=0, inmediato=0, numInst=i))
+
+        instrucciones.append(inst)
+        i += 1
+
+    return instrucciones, i
+
+# ******************************************************************************************************
+#    MAIN
+# ******************************************************************************************************
+
+if __name__ == '__main__':
+
+    # Cargamos en memoria las instrucciones
+    entrada = [a for a in leerFichero()]
+    instrucciones, acaba = cargaInstruccionesMemoria(entrada)
+
+    for elem in instrucciones:
+        print(elem.toSring())
+
+
+
