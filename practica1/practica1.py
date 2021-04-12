@@ -7,20 +7,21 @@ import sys
 # Memoria de datos con capacidad para 31 numeros de 32 bits, desde 0 a 31
 
 # Memoria de instrucciones
-instrucciones = [a for a in range(0,32)]
+instrucciones = [a for a in range(0, 32)]
 
 # Memoria de datos
-MemDatos = [a for a in range(0,32)]
+MemDatos = [a for a in range(0, 32)]
 
 # Registros
 registros = dict()
+
 
 # ******************************************************************************************************
 #    CLASES PARA INSTRUCCIONES Y REGISTROS DE SEGMENTACIÓN
 # ******************************************************************************************************
 
-class Instruccion:  #Clase instrucción con datos añadidos que vamos cambiando continuamente
-    operacion, id_rd, id_rs, id_rt, tipo, inm, res, numInst = "","","","","",0,0,0
+class Instruccion:  # Clase instrucción con datos añadidos que vamos cambiando continuamente
+    operacion, id_rd, id_rs, id_rt, tipo, inm, res, numInst = "", "", "", "", "", 0, 0, 0
 
     def __init__(self, operacion, id_rd, id_rs, id_rt, inm, numInst):
         self.operacion = operacion
@@ -70,10 +71,10 @@ class Instruccion:  #Clase instrucción con datos añadidos que vamos cambiando 
             return self.operacion + " " + self.id_rt + ", " + self.inm + "(" + self.id_rs + ")"
         return self.operacion + " " + self.id_rd + ", " + self.id_rs + ", " + self.id_rt
 
-#UNA CLASE PARA CADA REGISTRO DE SEGMENTACIÓN
-class Reg_IF_ID:
 
-    instruccion, tipo, operacion, id_rs, id_rt, id_rd, inmediato = "","", "", "", "", "", 0
+# UNA CLASE PARA CADA REGISTRO DE SEGMENTACIÓN
+class Reg_IF_ID:
+    instruccion, tipo, operacion, id_rs, id_rt, id_rd, inmediato = "", "", "", "", "", "", 0
 
     def __init__(self, instruccion, tipo, operacion, id_rs, id_rt, id_rd, inmediato):
         self.instruccion = instruccion
@@ -90,9 +91,9 @@ class Reg_IF_ID:
     def getDatos(self):
         return self.instruccion
 
-class Reg_ID_EX:
 
-    instruccion, tipo, operacion, id_rs, id_rt, id_rd, inmediato, op1, op2 = "","", "", "", "", "", 0, 0, 0
+class Reg_ID_EX:
+    instruccion, tipo, operacion, id_rs, id_rt, id_rd, inmediato, op1, op2 = "", "", "", "", "", "", 0, 0, 0
 
     def __init__(self, instruccion, tipo, operacion, id_rs, id_rt, id_rd, inmediato, op1, op2):
         self.instruccion = instruccion
@@ -111,9 +112,9 @@ class Reg_ID_EX:
     def getDatos(self):
         return self.instruccion
 
-class Reg_EX_MEM:
 
-    instruccion, tipo, id_rt, id_rd, operacion, res, op2 = "","","","","",0,0
+class Reg_EX_MEM:
+    instruccion, tipo, id_rt, id_rd, operacion, res, op2 = "", "", "", "", "", 0, 0
 
     def __init__(self, instruccion, tipo, id_rt, id_rd, operacion, res, op2):
         self.instruccion = instruccion
@@ -130,9 +131,9 @@ class Reg_EX_MEM:
     def getDatos(self):
         return self.instruccion
 
-class Reg_MEM_WB:
 
-    instruccion, tipo, id_rt, id_rd, res = "","","","",0
+class Reg_MEM_WB:
+    instruccion, tipo, id_rt, id_rd, res = "", "", "", "", 0
 
     def __init__(self, instruccion, tipo, id_rt, id_rd, res):
         self.instruccion = instruccion
@@ -153,21 +154,20 @@ class Reg_MEM_WB:
 # ******************************************************************************************************
 
 def ejecutaEtapa(etapa, instruccion):
-
     global res
     if instruccion.getOperacion() == "NOP":
         return instruccion
 
     if etapa == "IF":
-        rs=instruccion.getRs()
-        rt=instruccion.getRt()
-        rd=instruccion.getRd()
-        inm=instruccion.getInm()
-        op=instruccion.getOperacion()
+        rs = instruccion.getRs()
+        rt = instruccion.getRt()
+        rd = instruccion.getRd()
+        inm = instruccion.getInm()
+        op = instruccion.getOperacion()
         if instruccion.getOperacion() == "sw" or instruccion.getOperacion() == "lw":
-            tipo="MEM"
+            tipo = "MEM"
         else:
-            tipo="ALU"
+            tipo = "ALU"
         instruccion.setTipo(tipo)
         print("  Etapa IF de I" + str(instruccion.getNumInst()) + ": \n   >> Mostrando contenido del registro RS_IF_ID")
         print("       >> Instrucción: " + instruccion.toSring(), end=" | ")
@@ -177,19 +177,20 @@ def ejecutaEtapa(etapa, instruccion):
         return instruccion
 
     if etapa == "ID/OF":
-        rs=instruccion.getRs()
-        rt=instruccion.getRt()
-        rd=instruccion.getRd()
-        inm=instruccion.getInm()
-        op1=registros[instruccion.getRs()]
-        op2=registros[instruccion.getRt()]
-        op=instruccion.getOperacion()
+        rs = instruccion.getRs()
+        rt = instruccion.getRt()
+        rd = instruccion.getRd()
+        inm = instruccion.getInm()
+        op1 = registros[instruccion.getRs()]
+        op2 = registros[instruccion.getRt()]
+        op = instruccion.getOperacion()
         if instruccion.getOperacion() == "sw" or instruccion.getOperacion() == "lw":
-            tipo="MEM"
+            tipo = "MEM"
         else:
-            tipo="ALU"
+            tipo = "ALU"
         instruccion.setTipo(tipo)
-        print("  Etapa ID/OF de I" + str(instruccion.getNumInst()) + ": \n   >> Mostrando contenido del registro RS_ID_EX")
+        print("  Etapa ID/OF de I" + str(
+            instruccion.getNumInst()) + ": \n   >> Mostrando contenido del registro RS_ID_EX")
         print("       >> Instrucción: " + instruccion.toSring(), end=" | ")
         print("Tipo: " + tipo, end=" | ")
         print("Operación: " + op, end=" | ")
@@ -200,15 +201,15 @@ def ejecutaEtapa(etapa, instruccion):
         return instruccion
 
     if etapa == "EX":
-        rd=instruccion.getRd()
-        rt=instruccion.getRt()
-        op2=registros[instruccion.getRt()]
+        rd = instruccion.getRd()
+        rt = instruccion.getRt()
+        op2 = registros[instruccion.getRt()]
         if instruccion.getOperacion() == "sw" or instruccion.getOperacion() == "lw":
-            tipo="MEM"
-            res = int(registros[instruccion.getRs()])+instruccion.getInm()
+            tipo = "MEM"
+            res = int(registros[instruccion.getRs()]) + instruccion.getInm()
             instruccion.setRes(res)
         else:
-            tipo="ALU"
+            tipo = "ALU"
             if instruccion.getOperacion() == "add":
                 res = int(registros[instruccion.getRs()]) + int(registros[instruccion.getRt()])
                 instruccion.setRes(res)
@@ -216,7 +217,8 @@ def ejecutaEtapa(etapa, instruccion):
                 res = int(registros[instruccion.getRs()]) - int(registros[instruccion.getRt()])
                 instruccion.setRes(res)
         instruccion.setTipo(tipo)
-        print("  Etapa EX de I" + str(instruccion.getNumInst()) + ": \n   >> Mostrando contenido del registro RS_EX_MEM")
+        print(
+            "  Etapa EX de I" + str(instruccion.getNumInst()) + ": \n   >> Mostrando contenido del registro RS_EX_MEM")
         print("       >> Instrucción: " + instruccion.toSring(), end=" | ")
         print("Tipo: " + tipo, end=" | ")
         print("Operación: " + instruccion.getOperacion(), end=" | ")
@@ -226,24 +228,26 @@ def ejecutaEtapa(etapa, instruccion):
             print("Resultado: " + str(res))
         else:
             print(
-                "Rt: " + rt + " | Rs: " + instruccion.getRs() + " | Dato Rs: " + str(registros[instruccion.getRs()]) + " | Inm: " + str(instruccion.getInm()), end=" | ")
+                "Rt: " + rt + " | Rs: " + instruccion.getRs() + " | Dato Rs: " + str(
+                    registros[instruccion.getRs()]) + " | Inm: " + str(instruccion.getInm()), end=" | ")
             print("Resultado (rs+inm): " + str(res))
         return instruccion
 
     if etapa == "MEM":
-        rd=instruccion.getRd()
-        rt=instruccion.getRt()
-        op2=registros[instruccion.getRt()]
+        rd = instruccion.getRd()
+        rt = instruccion.getRt()
+        op2 = registros[instruccion.getRt()]
         if instruccion.getOperacion() == "sw" or instruccion.getOperacion() == "lw":
-            tipo="MEM"
-            if instruccion.getOperacion()== "sw":  #(MEM(inm+(rs))) = (rt)
-                MemDatos[instruccion.getRes()]= registros[instruccion.getRt()]
-            if instruccion.getOperacion()== "lw": #(rt) = (MEM(inm+(rs)))
-                registros[instruccion.getRt()]=instruccion.getRes()
+            tipo = "MEM"
+            if instruccion.getOperacion() == "sw":  # (MEM(inm+(rs))) = (rt)
+                MemDatos[instruccion.getRes()] = registros[instruccion.getRt()]
+            if instruccion.getOperacion() == "lw":  # (rt) = (MEM(inm+(rs)))
+                registros[instruccion.getRt()] = instruccion.getRes()
         else:
-            tipo="ALU"
+            tipo = "ALU"
         instruccion.setTipo(tipo)
-        print("  Etapa MEM de I" + str(instruccion.getNumInst()) + ": \n   >> Mostrando contenido del registro RS_MEM_WB")
+        print(
+            "  Etapa MEM de I" + str(instruccion.getNumInst()) + ": \n   >> Mostrando contenido del registro RS_MEM_WB")
         print("       >> Instrucción: " + instruccion.toSring(), end=" | ")
         print("Tipo: " + tipo, end=" | ")
         print("Operación: " + instruccion.getOperacion(), end=" | ")
@@ -266,6 +270,7 @@ def ejecutaEtapa(etapa, instruccion):
         print("  Etapa WB de I" + str(instruccion.getNumInst()))
         return instruccion
 
+
 # ******************************************************************************************************
 #    METODO DE ENTRADA Y SALIDA
 # ******************************************************************************************************
@@ -274,9 +279,10 @@ def leerFichero():
     lineas = sys.stdin.readlines()
     return lineas
 
+
 def cargaInstruccionesMemoria(entrada):
     instrucciones = list()
-    i=1
+    i = 1
     for linea in entrada:
         elem = linea.rstrip("\n").split(" ")
         if elem[0] == "lw" or elem[0] == "sw":
@@ -286,19 +292,21 @@ def cargaInstruccionesMemoria(entrada):
             rs = elem3[0]
             inst = Instruccion(operacion=elem[0], id_rt=elem[1], id_rs=rs, inm=inm, id_rd=" ", numInst=i)
         else:
-            inst = Instruccion(operacion=elem[0], id_rd=elem[1], id_rs=elem[2], id_rt=elem[3], inm=0,numInst=i)
+            inst = Instruccion(operacion=elem[0], id_rd=elem[1], id_rs=elem[2], id_rt=elem[3], inm=0, numInst=i)
 
         if len(instrucciones) != 0:
             instAnt = instrucciones[-1]
             if instAnt.getOperacion() == "lw":
                 if inst.getOperacion() == "add" or inst.getOperacion() == "sub":
                     if inst.getRt() == instAnt.getRt() or inst.getRs() == instAnt.getRt():
-                        instrucciones.append(Instruccion(operacion="NOP", id_rd="0", id_rs="0", id_rt="0", inm=0, numInst=i))
+                        instrucciones.append(
+                            Instruccion(operacion="NOP", id_rd="0", id_rs="0", id_rt="0", inm=0, numInst=i))
 
         instrucciones.append(inst)
         i += 1
 
     return instrucciones, i
+
 
 # ******************************************************************************************************
 #    MAIN
@@ -311,10 +319,11 @@ if __name__ == '__main__':
     instrucciones, acaba = cargaInstruccionesMemoria(entrada)
 
     # Inicializacion de los registros de segmentación
-    reg_IF_ID = Reg_IF_ID("","","","","","",0)
-    reg_ID_EX = Reg_ID_EX("","","","","","",0,0,0)
-    reg_EX_MEM = Reg_EX_MEM("","","","","",0,0)
-    reg_MEM_WB = Reg_MEM_WB("","","","",0)
+    reg_IF_ID = Reg_IF_ID("", "", "", "", "", "", 0)
+    reg_ID_EX = Reg_ID_EX("", "", "", "", "", "", 0, 0, 0)
+    reg_EX_MEM = Reg_EX_MEM("", "", "", "", "", 0, 0)
+    reg_MEM_WB = Reg_MEM_WB("", "", "", "", 0)
+
 
     # Inicailizamos los registros
     registros = {'r0': 0, 'r1': 1, 'r2': 2, 'r3': 3, 'r4': 4, 'r5': 5, 'r6': 6,
@@ -366,59 +375,57 @@ if __name__ == '__main__':
         if (reg_EX_MEM.id_rt == reg_MEM_WB.id_rd and reg_EX_MEM.operacion == "sw" and reg_MEM_WB.getTipo() == "ALU"):
             reg_EX_MEM.op2 = reg_MEM_WB.res
 
-
         # ******************************************************************************************************
         #    PROCESO DE SEGMENTACIÓN
         # ******************************************************************************************************
 
         print("-------------------------- Ciclo " + str(contCiclos) + ": --------------------------")
         if (reg_MEM_WB.getTipo() != ""):
-            ejecutaEtapa("WB",reg_MEM_WB.getDatos()) #Ejecutamos WB con los datos del Reg MEM_WB
-            reg_MEM_WB = Reg_MEM_WB("","","","",0) #Vacíamos el registro
+            ejecutaEtapa("WB", reg_MEM_WB.getDatos())  # Ejecutamos WB con los datos del Reg MEM_WB
+            reg_MEM_WB = Reg_MEM_WB("", "", "", "", 0)  # Vacíamos el registro
 
         if (reg_EX_MEM.getTipo() != ""):
-            datos = ejecutaEtapa("MEM",reg_EX_MEM.getDatos()) #Ejecutamos MEM con los datos del Reg EX_MEM
-            reg_MEM_WB = Reg_MEM_WB(datos,datos.getTipo(),datos.getRt(),datos.getRd(),datos.getRes())
-            reg_EX_MEM = Reg_EX_MEM("","","","","",0,0) #Vacíamos el registro
+            datos = ejecutaEtapa("MEM", reg_EX_MEM.getDatos())  # Ejecutamos MEM con los datos del Reg EX_MEM
+            reg_MEM_WB = Reg_MEM_WB(datos, datos.getTipo(), datos.getRt(), datos.getRd(), datos.getRes())
+            reg_EX_MEM = Reg_EX_MEM("", "", "", "", "", 0, 0)  # Vacíamos el registro
 
         if (reg_ID_EX.getTipo() != ""):
-            datos = ejecutaEtapa("EX",reg_ID_EX.getDatos()) #Ejecutamos EX con los datos del Reg ID_EX
-            reg_EX_MEM = Reg_EX_MEM(datos,datos.getTipo(),datos.getRt(),datos.getRd(),
-                                    datos.getOperacion(),datos.getRes(),registros[datos.getRt()])
-            reg_ID_EX = Reg_ID_EX("","","","","","",0,0,0) #Vacíamos el registro
+            datos = ejecutaEtapa("EX", reg_ID_EX.getDatos())  # Ejecutamos EX con los datos del Reg ID_EX
+            reg_EX_MEM = Reg_EX_MEM(datos, datos.getTipo(), datos.getRt(), datos.getRd(),
+                                    datos.getOperacion(), datos.getRes(), registros[datos.getRt()])
+            reg_ID_EX = Reg_ID_EX("", "", "", "", "", "", 0, 0, 0)  # Vacíamos el registro
 
         if (reg_IF_ID.getTipo() != ""):
-            datos = ejecutaEtapa("ID/OF",reg_IF_ID.getDatos()) #Ejecutamos ID/OF con los datos del Reg IF_ID
-            reg_ID_EX = Reg_ID_EX(datos,datos.getTipo(),datos.getOperacion(),datos.getRs(),datos.getRt(),
-                                  datos.getRd(),datos.getInm(),registros[datos.getRs()],registros[datos.getRt()])
-            reg_IF_ID = Reg_IF_ID("","","","","","",0) #Vacíamos el registro
+            datos = ejecutaEtapa("ID/OF", reg_IF_ID.getDatos())  # Ejecutamos ID/OF con los datos del Reg IF_ID
+            reg_ID_EX = Reg_ID_EX(datos, datos.getTipo(), datos.getOperacion(), datos.getRs(), datos.getRt(),
+                                  datos.getRd(), datos.getInm(), registros[datos.getRs()], registros[datos.getRt()])
+            reg_IF_ID = Reg_IF_ID("", "", "", "", "", "", 0)  # Vacíamos el registro
 
         if (PC != acaba):
-            datos = ejecutaEtapa("IF", instrucciones[PC]) #Ejecutamos IF con los datos de una nueva instrucción
-            reg_IF_ID = Reg_IF_ID(datos,datos.getTipo(),datos.getOperacion(),datos.getRs(),
-                                  datos.getRt(),datos.getRd,datos.getInm())
+            datos = ejecutaEtapa("IF", instrucciones[PC])  # Ejecutamos IF con los datos de una nueva instrucción
+            reg_IF_ID = Reg_IF_ID(datos, datos.getTipo(), datos.getOperacion(), datos.getRs(),
+                                  datos.getRt(), datos.getRd, datos.getInm())
             PC += 1
 
         continuaSimulador = reg_IF_ID.getDatos() != "" or reg_ID_EX.getDatos() != "" \
-                       or reg_EX_MEM.getDatos() != "" or reg_MEM_WB.getDatos() != ""
+                            or reg_EX_MEM.getDatos() != "" or reg_MEM_WB.getDatos() != ""
         contCiclos += 1
 
     print("")
-    print("Ciclos totales: " + str(contCiclos-1))
+    print("Ciclos totales: " + str(contCiclos - 1))
     print("")
     print("Contenido de la Memoria de datos")
     for i in range(12):
         print("MD[" + str(i) + "] = " + str(MemDatos[i]), end=" | ")
     print("")
     for i in range(10):
-        print("MD[" + str(i+12) + "] = " + str(MemDatos[i+12]), end=" | ")
+        print("MD[" + str(i + 12) + "] = " + str(MemDatos[i + 12]), end=" | ")
     print("")
     for i in range(10):
-        print("MD[" + str(i+22) + "] = " + str(MemDatos[i+22]), end=" | ")
+        print("MD[" + str(i + 22) + "] = " + str(MemDatos[i + 22]), end=" | ")
     print("")
     print("")
     print("Contenido del Banco de registros:")
     for elem in registros:
         print(str(elem) + " = " + str(registros[elem]), end=" | ")
     print("")
-
