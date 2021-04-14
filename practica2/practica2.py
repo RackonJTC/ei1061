@@ -163,14 +163,27 @@ def Etapa_COMMIT(listaDatos):
 
     BR, MD, MI, UF, ER, ROB, Var = listaDatos
     inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, PC, p_er_cola = Var
+    #********************************************************************************************************************************************************** WHILE INVENTADO
+    print("ODAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:   " + "p_rob_cabeza: " + str(p_rob_cabeza) + "  etapa: " + str(ROB[p_rob_cabeza].etapa))
+    i=p_rob_cabeza
+    while i > 0:
+        if ROB[i].linea_valida == 1 and ROB[i].etapa == 3:
+            id_reg = ROB[p_rob_cabeza].destino
+            BR[id_reg].contenido = ROB[p_rob_cabeza].valor
+            BR[id_reg].ok = 1
+            BR[id_reg].clk_tick_ok = ciclo + 1
 
-    if ROB[p_rob_cabeza].linea_valida == 1 and ROB[p_rob_cabeza].etapa == 3:
-        id_reg = ROB[p_rob_cabeza].destino
-        BR[id_reg].contenido = ROB[p_rob_cabeza].valor
-        BR[id_reg].ok = 1
-        BR[id_reg].clk_tick_ok = ciclo + 1
+        print(i)
+        i -= 1
+
+    # if ROB[p_rob_cabeza].linea_valida == 1 and ROB[p_rob_cabeza].etapa == 3:
+    #     id_reg = ROB[p_rob_cabeza].destino
+    #     BR[id_reg].contenido = ROB[p_rob_cabeza].valor
+    #     BR[id_reg].ok = 1
+    #     BR[id_reg].clk_tick_ok = ciclo + 1
 
     ROB[p_rob_cabeza] = ROB_class(0, 0, 0, 0, 0, 0, 0)
+    p_rob_cabeza += 1 #*************************************************************************************************************************  CUANDO ACTUALIZAR P_ROB_CABEZA
 
     Var = [inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, PC, p_er_cola]
     listaDatos = [BR, MD, MI, UF, ER, ROB, Var]
@@ -198,15 +211,14 @@ def Etapa_WB(listaDatos):
             # se ha escrito un dato. No se pueden escribir más.
             bucle = 1
 
-            k, j = 0, 0
             for k in range(TOTAL_UF):
                 fin = p_er_cola[k]
+                print(p_er_cola)
                 for j in range(fin):
                     # Si el operando depende de ese resultado
-                    if ER_class[k][j].linea_valida == 1:  # Si la linea es valida
+                    if ER[k][j].linea_valida == 1:  # Si la linea es valida
                         if ER[k][j].opa_ok == 0 and ER[k][j].opa == id:  # Si opa no disponible y depende de TAG_ROB
-                            ER[k][j].opa \
-                                = UF[i].res
+                            ER[k][j].opa = UF[i].res
                             ER[k][j].opa_ok = 1
                             ER[k][j].clk_tick_ok_a = ciclo + 1
                         if ER[k][j].opb_ok == 0 and ER[k][j].opb == id:  # Si opb depende de ese resultado
@@ -245,17 +257,19 @@ def Etapa_EX(listaDatos):
             if uf_.cont_ciclos < max:
                 uf_.cont_ciclos = uf_.cont_ciclos + 1  # incrementar el ciclo
 
-                if uf_.cont_ciclos == max:  # si se ha finalizado la operación generar resultado y validarlo. uf_.operacion
+                if uf_.cont_ciclos == max:  # si se ha finalizado la operación genera resultado y valida. uf_.operacion
                     # codOperacion = ["NOP", "add", "sub", "lw", "sw", "mult"]
                     if uf_.operacion == 1:
                         UF[i].res = UF[i].opa + UF[i].opb
                     elif uf_.operacion == 2:
                         UF[i].res = UF[i].opa - UF[i].opb
                     # ME FALTA LW Y SW *********************************************************************************************************************
+                    elif uf_.operacion == 3:
+                        UF[i].res = UF[i].opb
                     elif uf_.operacion == 5:
                         UF[i].res = UF[i].opa * UF[i].opb
 
-                    UF.res_ok = 1
+                    UF[i].res_ok = 1
                     UF[i].clk_tick_ok = ciclo + 1
         elif enviar == 0:
             er_ = ER[i]
@@ -266,7 +280,15 @@ def Etapa_EX(listaDatos):
                     if er_[j].opa_ok == 1 and er_[j].clk_tick_ok_a <= ciclo and er_[j].opb_ok == 1 and er_[j].clk_tick_ok_b <= ciclo:
                         # enviar operación a ejecutar a UF actualizando UF[i] con los datos necesarios e inicializar ciclo
                         # No entiendo lo de enviar ****************************************************************************************************************
-                        ER[i].TAG_ROB = 2  # Actualizar en etapa en ROB a EX
+                        if er_[j].operacion == 1 or er_[j].operacion == 2:
+                            codUF = 0
+                        elif er_[j].operacion == 3 or er_[j].operacion == 4:
+                            codUF = 1
+                        elif er_[j].operacion == 5:
+                            codUF = 2
+                        UF[codUF] = UF_class(uso=1,cont_ciclos=1,TAG_ROB=er_[j].TAG_ROB,opa=er_[j].opa,
+                                             opb=er_[j].opb,operacion=er_[j].operacion,res=0,res_ok=0,clk_tick_ok=0)
+                        ER[i][j].TAG_ROB = 2  # Actualizar en etapa en ROB a EX
                         enviar = 1
                 else:
                     j += 1
@@ -451,7 +473,7 @@ if __name__ == '__main__':
     ER = [a for a in range(0, TOTAL_UF)]
     for i in range(len(ER)):
         ER[i]= [ER_class(linea_valida=0, TAG_ROB=0, operacion=0, opa=0, opa_ok=0, clk_tick_ok_a=0,
-                         opb=0, opb_ok=0, clk_tick_ok_b=0, inmediato=0)] * INS
+                         opb=0, opb_ok=0, clk_tick_ok_b=0, inmediato=0)] * 32
 
 
     # Inicializamos el ROB_class
@@ -477,10 +499,29 @@ if __name__ == '__main__':
 
     ciclo = 1
     i = 0
+    codUF = -1
+    # Códigos para las UF_class  TOTAL_UF = 3  ALU = 0  MEM = 1  MULT = 2
+    while i < len(MI):
+        # Insertamos la intruccione en la ER correspondiente (se omite IF)
+        nInst = MI[i]
+        if nInst.cod == 1 or nInst.cod == 2:
+            codUF=0
+        elif nInst.cod == 3 or nInst.cod == 4:
+            codUF=1
+        elif nInst.cod == 5:
+            codUF=2
+        ER[codUF][p_er_cola[codUF]] = ER_class(linea_valida=1,TAG_ROB=-1,operacion=nInst.cod,opa=nInst.rs,
+                                                       opa_ok=1,clk_tick_ok_a=-1,opb=nInst.rt,opb_ok=1,
+                                                       clk_tick_ok_b=-1,inmediato=nInst.inmediato)
+        p_er_cola[codUF]+=1
+        i+=1
+
+
     while (inst_rob > 0 or inst_prog > 0):
         print()
         print("---- CICLO " + str(ciclo) + " -----------------------------------------------------------------------------------------------")
         print()
+        #Ejecutamos etapas
         listaDatos = Etapa_COMMIT(listaDatos)
         listaDatos = Etapa_WB(listaDatos)
         listaDatos = Etapa_EX(listaDatos)
@@ -488,6 +529,7 @@ if __name__ == '__main__':
         inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, PC, p_er_cola = listaDatos[6]
         BR, MD, MI, UF, ER, ROB, Var = listaDatos
         ciclo += 1
+        i += 1
 
         # MOSTRAR EL CONTENIDO DE LAS ESTRUCTURAS
         Mostrar_ER(ER)
