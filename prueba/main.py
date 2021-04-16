@@ -207,7 +207,7 @@ class RS_MEMWB():
 # Carga de memoria de instrucciones
 def cargaMemoria(fichero):
     f = open(fichero)
-    global memIns
+
     memIns=[]
     i=0
     for linea in f:
