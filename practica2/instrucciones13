@@ -1,1 +1,4 @@
-sw r1 2(r0)
+add r3, r1, r3
+lw r7, 2(r0)
+sw r3, 3(r0)
+mult r9, r4, r5
