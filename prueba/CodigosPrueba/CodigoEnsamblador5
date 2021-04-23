@@ -1,5 +1,0 @@
-add r1, r2, r3
-NOP
-NOP
-NOP
-sw r1, 2(r1)
