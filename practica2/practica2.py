@@ -262,7 +262,7 @@ def ex(datos):
                         uf[i].res = memoriadatos[uf[i].opa]
                     elif uf[i].operacion == 4:  # sw. En opb esta la direccion de memoria de datos
                         # (MEM(inm+(rs))) = (rt)
-                        #print("HOLA: " + str(uf[i].opa))
+                        # print("HOLA: " + str(uf[i].opa))
                         memoriadatos[uf[i].opb] = registros[uf[i].opa].contenido
                     elif uf[i].operacion == 5:  # mult
                         uf[i].res = uf[i].opa * uf[i].opb
