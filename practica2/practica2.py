@@ -595,4 +595,3 @@ if __name__ == '__main__':
         imprime(registros, "reg")
         imprime(memoriadatos, "mem")
         print()
-
