@@ -473,7 +473,7 @@ def cargainstruccionesmemoria(entrada):
 
         if len(instrucciones) != 0:
             ant = instrucciones[-1]
-            if ant.cod == 3:
+            if ant.cod == 3 or ant.cod==4:
                 if inst.cod == 1 or inst.cod == 2:
                     if inst.rt == ant.rt or inst.rs == ant.rt:
                         instrucciones.append(
