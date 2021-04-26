@@ -31,7 +31,6 @@ ISS = 1
 EX = 2
 WB = 3
 
-
 # ******************************************************************************************************
 #    ESTRUCTURAS DE DATOS
 # ******************************************************************************************************
@@ -93,9 +92,9 @@ class EstacionReserva:
         self.inmediato = inmediato  # utilizado para las instrucciones lw/sw
 
     def __str__(self) -> str:
-        cadena = str(self.linea_valida) + "\t   " + str(self.TAG_ROB) + "\t   " + str(self.operacion) + "\t   " \
-                 + str(self.opa) + "\t   " + str(self.opa_ok) + "\t   " + str(self.clk_tick_ok_a) + "\t   " \
-                 + str(self.opb) + "\t   " + str(self.opb_ok) + "\t   " + str(self.clk_tick_ok_b) + "\t   " \
+        cadena = str(self.linea_valida) + "\t " + str(self.TAG_ROB) + "\t" + str(self.operacion) + "\t" \
+                 + str(self.opa) + "\t" + str(self.opa_ok) + "\t" + str(self.clk_tick_ok_a) + "\t" \
+                 + str(self.opb) + "\t" + str(self.opb_ok) + "\t" + str(self.clk_tick_ok_b) + "\t" \
                  + str(self.inmediato)
         return cadena
 
@@ -112,8 +111,8 @@ class BufferReordenamiento:
         self.etapa = etapa  # Etapa de procesamiento de la instrucción ISS, EX, WB
 
     def __str__(self) -> str:
-        cadena = str(self.TAG_ROB) + "\t  " + str(self.linea_valida) + "\t\t " + str(self.destino) + "\t\t " \
-                 + str(self.valor) + "\t\t " + str(self.valor_ok) + "\t\t " + str(self.clk_tick_ok) + "\t\t  " \
+        cadena = str(self.TAG_ROB) + "\t" + str(self.linea_valida) + "\t" + str(self.destino[0]) + "\t" \
+                 + str(self.valor) + "\t" + str(self.valor_ok) + "\t" + str(self.clk_tick_ok) + "\t" \
                  + str(self.etapa)
         return cadena
 
@@ -159,14 +158,15 @@ def commit(listadatos):
     inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, pc, p_er_cola, ciclo = otros
 
     if rob[p_rob_cabeza].linea_valida == 1 and rob[p_rob_cabeza].etapa == 3:
-        id_reg = rob[p_rob_cabeza].destino
-        if rob[p_rob_cabeza].TAG_ROB == registros[id_reg].TAG_ROB and rob[p_rob_cabeza].destino != -1:
+        id_reg = rob[p_rob_cabeza].destino[0]
+        if rob[p_rob_cabeza].destino[0] != -1:  # rob[p_rob_cabeza].TAG_ROB == registros[id_reg].TAG_ROB and
             registros[id_reg].contenido = rob[p_rob_cabeza].valor
+            # registros[id_reg].contenido = actualiza(rob[p_rob_cabeza].destino)
             registros[id_reg].ok = 1
             registros[id_reg].clk_tick_ok = ciclo + 1
 
         rob[p_rob_cabeza] = 0
-        rob[p_rob_cabeza] = BufferReordenamiento(0, 0, 0, 0, 0, 0, 0)
+        rob[p_rob_cabeza] = BufferReordenamiento(0, 0, [0, 0, 0, 0], 0, 0, 0, 0)
 
         p_rob_cabeza += 1
         inst_rob -= 1
@@ -189,7 +189,7 @@ def wb(datos):
     while bucle == 0 and i < TOTAL_UF:
         if uf[i].operacion == 4 and uf[i].res_ok == 1:
             rob[uf[i].TAG_ROB].etapa = WB  # WB
-            rob[uf[i].TAG_ROB].destino = -1  # diferenciar de sw
+            rob[uf[i].TAG_ROB].destino[0] = -1  # diferenciar de sw
             # Se deja libre la uf
             uf[i].libera()
             # Se ha escrito un dato. No se pueden escribir más.
@@ -214,12 +214,10 @@ def wb(datos):
                     # Si el operando depende de ese resultado
                     if er[k][j].linea_valida == 1:  # Si la linea es valida
                         if er[k][j].opa_ok == 0 and er[k][j].opa == id:  # Si opa no disponible y depende de TAG_ROB
-                            # er[k][j].opa = registros[rob[id].destino].contenido
                             er[k][j].opa = uf[i].res
                             er[k][j].opa_ok = 1
                             er[k][j].clk_tick_ok_a = ciclo + 1
                         if er[k][j].opb_ok == 0 and er[k][j].opb == id:  # Si opb depende de ese resultado
-                            # er[k][j].opb = registros[rob[id].destino].contenido
                             er[k][j].opB = uf[i].res
                             er[k][j].opb_ok = 1
                             er[k][j].clk_tick_ok_b = ciclo + 1
@@ -259,11 +257,10 @@ def ex(datos):
                     elif uf[i].operacion == 2:  # sub
                         uf[i].res = uf[i].opa - uf[i].opb
                     elif uf[i].operacion == 3:  # lw. En opb esta la direccion de memoria de datos
-                        uf[i].res = memoriadatos[uf[i].opa]
+                        uf[i].res = memoriadatos[uf[i].opb]
                     elif uf[i].operacion == 4:  # sw. En opb esta la direccion de memoria de datos
                         # (MEM(inm+(rs))) = (rt)
-                        # print("HOLA: " + str(uf[i].opa))
-                        memoriadatos[uf[i].opb] = registros[uf[i].opa].contenido
+                        memoriadatos[uf[i].opa] = registros[uf[i].opb].contenido
                     elif uf[i].operacion == 5:  # mult
                         uf[i].res = uf[i].opa * uf[i].opb
 
@@ -291,8 +288,7 @@ def ex(datos):
                                                     clk_tick_ok=0)
 
                         if er_[j].operacion == 3 or er_[j].operacion == 4:
-                            print("HOLA: " + str(er_[j].opa))
-                            uf[i].opa = er_[j].opa + er_[j].inmediato
+                            uf[i].opa = registros[er_[j].opa].contenido + er_[j].inmediato
 
                         rob[er[i][j].TAG_ROB].etapa = 2  # Actualizar en etapa en rob a EX
                         er[i][j].linea_valida = 0  # TODO: Linea añadida por mi
@@ -358,11 +354,11 @@ def idiss(datos):
         rob[p_rob_cola].etapa = ISS
 
         if inst.cod == 4:
-            rob[p_rob_cola].destino = 0
+            rob[p_rob_cola].destino = [0, 0, 0, inst.cod]
         elif inst.cod == 3:
-            rob[p_rob_cola].destino = inst.rt
+            rob[p_rob_cola].destino = [inst.rt, inst.rs, inst.rt, inst.cod]
         else:
-            rob[p_rob_cola].destino = inst.rd
+            rob[p_rob_cola].destino = [inst.rd, inst.rs, inst.rt, inst.cod]
 
         # Invalidar el registro destino de esta instrucción
         registros[inst.rd].ok = 0
@@ -393,7 +389,7 @@ def imprime(unidad, tipo):
     elif tipo == "er":
         nombresEstaciones = ["ALU", "MEM", "MULT"]
         print("*** ESTACIONES DE RESERVA *********************************************************")
-        print("\t\tl_val\tTGROB\toper\topa\t  opa_ok\tcA_ok\t  opb\t opb_ok\t cB_ok\tinmed")
+        print("\t\tl_val\tTGROB\toper\topa\topa_ok\tcA_ok\topb\topb_ok\tcB_ok\tinmed")
         for i in range(len(unidad)):
             for j in range(len(unidad[i])):
                 if type(unidad[i][j]) != int:
@@ -401,13 +397,13 @@ def imprime(unidad, tipo):
 
     elif tipo == "rob":
         print("*** BUFFER DE REORDENAMIENTO ******************************************************")
-        print("\t\tTAG\tlinVal\tdest\tvalor\tv_ok\tclk_ok\tetapa")
+        print("\tTAG\tlinVal\tdest\tvalor\tv_ok\tclk_ok\tetapa")
         for i in range(len(unidad)):
             print("ROB" + str(i) + ":\t" + unidad[i].__str__())
 
     elif tipo == "reg":
         print("*** BANCO DE REGISTROS ************************************************************")
-        print("\t  C\t   ok\tclk\tTAG")
+        print("\tC\tok\tclk\tTAG")
         for i in range(len(unidad)):
             print("R" + str(i) + ":   " + unidad[i].__str__())
 
@@ -443,6 +439,17 @@ def leerfichero(fichero):
     return memIns
 
 
+def actualiza(destino):
+    if destino[3] == 1:
+        return registros[destino[1]].contenido + registros[destino[2]].contenido
+    if destino[3] == 2:
+        return registros[destino[1]].contenido - registros[destino[2]].contenido
+    if destino[3] == 3:
+        return memoriadatos[destino[1]]
+    if destino[3] == 5:
+        return registros[destino[1]].contenido * registros[destino[2]].contenido
+
+
 def cargainstruccionesmemoria(entrada):
     instrucciones = list()
     i = 1
@@ -463,18 +470,18 @@ def cargainstruccionesmemoria(entrada):
             elem2 = elem[2].split("(")
             inm = int(elem2[0])
             elem3 = elem2[1].split(")")
-            rs = int(elem3[0][1])
-            inst = Instruccion(cod=cod, rt=int(elem[1][1]), rs=rs, inmediato=inm, rd=0, num=i, tipouf=tipouf)
+            rs = int(elem3[0][1:])
+            inst = Instruccion(cod=cod, rt=int(elem[1][1:-1]), rs=rs, inmediato=inm, rd=0, num=i, tipouf=tipouf)
         else:
-            inst = Instruccion(cod=cod, rd=int(elem[1][1]), rs=int(elem[2][1]), rt=int(elem[3][1]), inmediato=0,
+            inst = Instruccion(cod=cod, rd=int(elem[1][1:-1]), rs=int(elem[2][1:-1]), rt=int(elem[3][1:]), inmediato=0,
                                num=i, tipouf=tipouf)
 
         # Añadir NOPS automaticos
 
         if len(instrucciones) != 0:
             ant = instrucciones[-1]
-            if ant.cod == 3 or ant.cod==4:
-                if inst.cod == 1 or inst.cod == 2:
+            if ant.cod == 3 or ant.cod == 4:
+                if inst.cod == 1 or inst.cod == 2 or ant.cod == 5:
                     if inst.rt == ant.rt or inst.rs == ant.rt:
                         instrucciones.append(
                             Instruccion(cod=0, rd=0, rs=0, rt=0, inmediato=0, num=i, tipouf=tipouf))
@@ -509,7 +516,7 @@ if __name__ == '__main__':
         registros.append(Registro(contenido=(i + 1) * 10, ok=1, clk_tick_ok=0, tag=0))
 
     # Memoria de datos
-    memoriadatos = [0 for a in range(0, DAT)]
+    memoriadatos = [33 for a in range(0, DAT)]
 
     # Inicializamos las Unidades Funcionales
     uf = [a for a in range(0, TOTAL_UF)]
@@ -525,7 +532,7 @@ if __name__ == '__main__':
     # Inicializamos el BufferReordenamiento
     rob = list()
     for i in range(INS):
-        rob.append(BufferReordenamiento(0, 0, 0, 0, 0, 0, 0))
+        rob.append(BufferReordenamiento(0, 0, [0, 0, 0, 0], 0, 0, 0, 0))
 
     inst_prog = len(instrucciones)  # total instrucciones programa
     inst_rob = 0  # instrucciones en rob
@@ -560,7 +567,7 @@ if __name__ == '__main__':
         inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, pc, p_er_cola, ciclo = datos[6]
         registros, memoriadatos, instrucciones, uf, er, rob, otros = datos
 
-        print("FINAL: " + "inst_rob: " + str(inst_rob) + ", inst_prog: " + str(inst_prog))
+        # print("FINAL: " + "inst_rob: " + str(inst_rob) + ", inst_prog: " + str(inst_prog))
 
         # MOSTRAR EL CONTENIDO DE LAS ESTRUCTURAS
         imprime(uf, "uf")
