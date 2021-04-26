@@ -5,4 +5,5 @@ sw r3, 3(r0)
 sub r5, r5, r4
 mult r10, r10, r10
 add r11, r10, r3
+add r0, r10, r11
 sw r11, 0(r0)

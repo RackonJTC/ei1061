@@ -75,6 +75,11 @@ class Registro:
         cadena = str(self.contenido) + "\t" + str(self.ok) + "\t" + str(self.clk_tick_ok) + "\t" + str(self.TAG_ROB)
         return cadena
 
+    def libre(self):
+        self.ok = 1
+        self.clk_tick_ok = 0
+        self.TAG_ROB = 0
+
 
 class EstacionReserva:
 
@@ -115,6 +120,15 @@ class BufferReordenamiento:
                  + str(self.valor) + "\t" + str(self.valor_ok) + "\t" + str(self.clk_tick_ok) + "\t" \
                  + str(self.etapa)
         return cadena
+
+    def libera(self):
+        self.TAG_ROB = None
+        self.linea_valida = 0
+        self.destino = [0, 0, 0, 0]
+        self.valor = 0
+        self.valor_ok = 0
+        self.clk_tick_ok = 0
+        self.etapa = 0
 
 
 class UnidadFuncional:  # Unidad funcional
@@ -159,14 +173,16 @@ def commit(listadatos):
 
     if rob[p_rob_cabeza].linea_valida == 1 and rob[p_rob_cabeza].etapa == 3:
         id_reg = rob[p_rob_cabeza].destino[0]
-        if rob[p_rob_cabeza].destino[0] != -1:  # rob[p_rob_cabeza].TAG_ROB == registros[id_reg].TAG_ROB and
-            registros[id_reg].contenido = rob[p_rob_cabeza].valor
-            # registros[id_reg].contenido = actualiza(rob[p_rob_cabeza].destino)
-            registros[id_reg].ok = 1
-            registros[id_reg].clk_tick_ok = ciclo + 1
+        # if rob[p_rob_cabeza].TAG_ROB == registros[id_reg].TAG_ROB and
+        # registros[id_reg].contenido = rob[p_rob_cabeza].valor
+        registros[id_reg].contenido = actualiza(rob[p_rob_cabeza].destino)
+        registros[id_reg].ok = 1
+        registros[id_reg].clk_tick_ok = ciclo + 1
+        registros[id_reg].libre()
+        if inst_rob == 1:
+            registros[0].libre()
 
-        rob[p_rob_cabeza] = 0
-        rob[p_rob_cabeza] = BufferReordenamiento(0, 0, [0, 0, 0, 0], 0, 0, 0, 0)
+        rob[p_rob_cabeza].libera()
 
         p_rob_cabeza += 1
         inst_rob -= 1
@@ -189,7 +205,6 @@ def wb(datos):
     while bucle == 0 and i < TOTAL_UF:
         if uf[i].operacion == 4 and uf[i].res_ok == 1:
             rob[uf[i].TAG_ROB].etapa = WB  # WB
-            rob[uf[i].TAG_ROB].destino[0] = -1  # diferenciar de sw
             # Se deja libre la uf
             uf[i].libera()
             # Se ha escrito un dato. No se pueden escribir más.
@@ -272,6 +287,7 @@ def ex(datos):
             er_ = er[i]
             fin = p_er_cola[i]  # última línea insertada
             j = 0  # contador de líneas de er[i] desde 0 hasta fin
+
             while enviar == 0 and j < fin:  # búsqueda de instrucción a ejecutar en todas las líneas validas de er_
                 if er_[j].linea_valida == 1:  # línea válida. comprueba si los operandos están disponibles
                     if er_[j].opa_ok == 1 and er_[j].clk_tick_ok_a <= ciclo and er_[j].opb_ok == 1 \
@@ -291,7 +307,7 @@ def ex(datos):
                             uf[i].opa = registros[er_[j].opa].contenido + er_[j].inmediato
 
                         rob[er[i][j].TAG_ROB].etapa = 2  # Actualizar en etapa en rob a EX
-                        er[i][j].linea_valida = 0  # TODO: Linea añadida por mi
+                        er[i][j].linea_valida = 0
                         enviar = 1
 
                     else:
@@ -339,6 +355,8 @@ def idiss(datos):
 
         if inst.cod == 4 or inst.cod == 3:
             er[inst.tipoUF][p_er_cola[inst.tipoUF]].opb = inst.rt
+            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opa = inst.rs
+            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opa_ok = 1
             er[inst.tipoUF][p_er_cola[inst.tipoUF]].opb_ok = 1
 
         er[inst.tipoUF][p_er_cola[inst.tipoUF]].inmediato = inst.inmediato
@@ -353,10 +371,8 @@ def idiss(datos):
         rob[p_rob_cola].linea_valida = 1
         rob[p_rob_cola].etapa = ISS
 
-        if inst.cod == 4:
-            rob[p_rob_cola].destino = [0, 0, 0, inst.cod]
-        elif inst.cod == 3:
-            rob[p_rob_cola].destino = [inst.rt, inst.rs, inst.rt, inst.cod]
+        if inst.cod == 3 or inst.cod == 4:
+            rob[p_rob_cola].destino = [inst.rt, registros[inst.rs].contenido + inst.inmediato, inst.rt, inst.cod]
         else:
             rob[p_rob_cola].destino = [inst.rd, inst.rs, inst.rt, inst.cod]
 
@@ -446,6 +462,9 @@ def actualiza(destino):
         return registros[destino[1]].contenido - registros[destino[2]].contenido
     if destino[3] == 3:
         return memoriadatos[destino[1]]
+    if destino[3] == 4:
+        memoriadatos[destino[1]] = registros[destino[0]].contenido
+        return registros[destino[0]].contenido
     if destino[3] == 5:
         return registros[destino[1]].contenido * registros[destino[2]].contenido
 
@@ -576,3 +595,4 @@ if __name__ == '__main__':
         imprime(registros, "reg")
         imprime(memoriadatos, "mem")
         print()
+
