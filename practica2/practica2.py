@@ -79,7 +79,13 @@ class Registro:
         self.TAG_ROB = tag  # Si el contenido no es valido, indicar que linea de rob lo actualiza
 
     def __str__(self) -> str:
-        cadena = " " + str(self.contenido) + "\t" + str(self.ok) + "\t" + str(self.clk_tick_ok) + "\t" + str(self.TAG_ROB)
+        dato = self.TAG_ROB
+        datoClk = self.clk_tick_ok
+        if self.TAG_ROB == -1:
+            dato = "---"
+        if self.clk_tick_ok == -1:
+            datoClk = "---"
+        cadena = " " + str(self.contenido) + "\t" + str(self.ok) + "\t" + str(datoClk) + "\t" + str(dato)
         return cadena
 
     def libre(self):
@@ -104,7 +110,7 @@ class EstacionReserva:
         self.inmediato = inmediato  # utilizado para las instrucciones lw/sw
 
     def __str__(self) -> str:
-        cadena = str(self.linea_valida) + "\t " + str(self.TAG_ROB) + "\t" + str(self.operacion) + "\t" \
+        cadena = str(self.linea_valida) + "\t " + str(self.TAG_ROB) + "\t" + codOperacion[self.operacion] + "\t" \
                  + str(self.opa) + "\t" + str(self.opa_ok) + "\t" + str(self.clk_tick_ok_a) + "\t" \
                  + str(self.opb) + "\t" + str(self.opb_ok) + "\t" + str(self.clk_tick_ok_b) + "\t" \
                  + str(self.inmediato)
@@ -123,19 +129,22 @@ class BufferReordenamiento:
         self.etapa = etapa  # Etapa de procesamiento de la instrucción ISS, EX, WB
 
     def __str__(self) -> str:
-        cadena = str(self.TAG_ROB) + "\t" + str(self.linea_valida) + "\t" + str(self.destino) + "\t" \
-                 + str(self.valor) + "\t" + str(self.valor_ok) + "\t" + str(self.clk_tick_ok) + "\t" \
+        dest = "R" + str(self.destino)
+        val = self.valor
+        valOk = self.valor_ok
+        clkOk = self.clk_tick_ok
+        if self.destino == -1:
+            dest = "-"
+        if self.valor == -1:
+            val = "S/N"
+        if self.valor_ok == -1:
+            valOk = "-"
+        if self.clk_tick_ok == -1:
+            clkOk = "-"
+        cadena = str(self.TAG_ROB) + "\t" + str(self.linea_valida) + "\t" + str(dest) + "\t" \
+                 + str(val) + "\t" + str(valOk) + "\t" + str(clkOk) + "\t" \
                  + codEtapa[self.etapa]
         return cadena
-
-    def libera(self):
-        self.TAG_ROB = None
-        self.linea_valida = 0
-        self.destino = 0
-        self.valor = 0
-        self.valor_ok = 0
-        self.clk_tick_ok = 0
-        self.etapa = 0
 
 
 class UnidadFuncional:  # Unidad funcional
@@ -152,9 +161,12 @@ class UnidadFuncional:  # Unidad funcional
         self.clk_tick_ok = clk_tick_ok  # a partir de qué ciclo de reloj es válido el resultado
 
     def __str__(self) -> str:
-        cadena = "uso: " + str(self.uso) + " cont_c: " + str(self.cont_ciclos) + " TAG_R: " + str(self.TAG_ROB) + \
-                 " opa: " + str(self.opa) + " opb: " + str(self.opb) + " op: " + str(self.operacion) + " res: " \
-                 + str(self.res) + " res_ok: " + str(self.res_ok) + " clk_t_ok: " + str(self.clk_tick_ok)
+        libre = "<- OCUPADA"
+        if self.uso == 0:
+            libre = "-> LIBRE"
+        cadena = "\t" + str(self.uso) + "\t" + str(self.cont_ciclos) + "\t" + str(self.TAG_ROB) + \
+                 "\t" + str(self.opa) + "\t" + str(self.opb) + "\t" + str(self.operacion) + "\t" \
+                 + str(self.res) + "\t" + str(self.res_ok) + "\t" + str(self.clk_tick_ok) + "\t" + libre
         return cadena
 
     def libera(self):
@@ -181,8 +193,8 @@ def commit(listadatos):
     rob_ = rob[p_rob_cabeza]
     if rob_.linea_valida and rob_.etapa == WB:
 
-        if "T=" in str(rob_.destino):
-            rob_.destino = rob[int(rob_.destino.strip("T="))].valor
+        if "R" in str(rob_.destino):
+            rob_.destino = rob[int(rob_.destino.strip("R"))].valor
 
         if rob_.destino > 0:
             registros[rob_.destino].contenido = rob_.valor
@@ -193,7 +205,6 @@ def commit(listadatos):
         rob_.etapa = 4
         rob_.linea_valida = 0
         p_rob_cabeza += 1
-        print("Hola?: " + str(inst_rob))
         inst_rob -= 1
 
     ciclo += 1
@@ -222,8 +233,8 @@ def wb(datos):
             rob[id].etapa = WB  # WB = 3
 
             if uf_.operacion == 4:  # Si es sw
-                if "T=" in str(rob[id].destino):
-                    memoriadatos[uf_.res] = rob[int(rob[id].destino.strip("T="))].valor
+                if "R" in str(rob[id].destino):
+                    memoriadatos[uf_.res] = rob[int(rob[id].destino.strip("R"))].valor
                 else:
                     print(uf_.res)
                     memoriadatos[uf_.res] = memoriadatos[uf_.res] = -rob[id].destino
@@ -376,7 +387,7 @@ def idiss(datos):
             if registros[inst.rt].ok == 1:
                 rob_.destino = -inst.rt
             else:
-                rob_.destino = "T=" + str(registros[inst.rt].TAG_ROB)
+                rob_.destino = "R" + str(registros[inst.rt].TAG_ROB)
 
         # Invalidar el registro destino de esta instrucción
         rob_.valor_ok = 0
@@ -408,6 +419,7 @@ def idiss(datos):
 def imprime(unidad, tipo):
     if tipo == "uf":
         print("*** UNIDADES FUNCIONALES *********************************************************")
+        print("\t\tuso\tcont_c\tTAG_R\topa\topb\top\tres\tres_ok\tclk_ok")
         for i in range(len(unidadesFuncionales)):
             print("UF " + unidadesFuncionales[i] + ": " + unidad[i].__str__())
 
@@ -417,7 +429,7 @@ def imprime(unidad, tipo):
         print("\t\tl_val\tTGROB\toper\topa\topa_ok\tcA_ok\topb\topb_ok\tcB_ok\tinmed")
         for i in range(len(unidad)):
             for j in range(len(unidad[i])):
-                if type(unidad[i][j]) != int:
+                if unidad[i][j].linea_valida != -1:
                     print("ER " + nombresEstaciones[i] + " " + str(j) + ":\t" + unidad[i][j].__str__())
 
     elif tipo == "rob":
@@ -428,7 +440,7 @@ def imprime(unidad, tipo):
 
     elif tipo == "reg":
         print("*** BANCO DE REGISTROS ************************************************************")
-        print("\tC\tok\tclk\tTAG")
+        print("\tCont\tok\tclk\tTAG")
         for i in range(len(unidad)):
             print("R" + str(i) + ":   " + unidad[i].__str__())
 
@@ -464,6 +476,7 @@ def leerfichero(fichero):
         i += 1
     return memIns
 
+
 def cargainstruccionesmemoria(entrada):
     instrucciones = list()
     i = 1
@@ -489,16 +502,6 @@ def cargainstruccionesmemoria(entrada):
         else:
             inst = Instruccion(cod=cod, rd=int(elem[1][1:-1]), rs=int(elem[2][1:-1]), rt=int(elem[3][1:]), inmediato=0,
                                num=i, tipouf=tipouf)
-
-        # # Añadir NOPS automaticos
-        #
-        # if len(instrucciones) != 0:
-        #     ant = instrucciones[-1]
-        #     if ant.cod == 3 or ant.cod == 4:
-        #         if inst.cod == 1 or inst.cod == 2 or ant.cod == 5:
-        #             if inst.rt == ant.rt or inst.rs == ant.rt:
-        #                 instrucciones.append(
-        #                     Instruccion(cod=0, rd=0, rs=0, rt=0, inmediato=0, num=i, tipouf=tipouf))
 
         instrucciones.append(inst)
         i += 1
@@ -527,19 +530,19 @@ if __name__ == '__main__':
     # Banco de Registros, r0=10, r1=20, r2=30, ...
     registros = list()
     for i in range(REG):
-        registros.append(Registro(contenido=i+1, ok=1, clk_tick_ok=-1, tag=-1))
+        registros.append(Registro(contenido=i + 1, ok=1, clk_tick_ok=-1, tag=-1))
 
     # Memoria de datos
-    memoriadatos = [a for a in range(-1, DAT)]
+    memoriadatos = [a for a in range(0, DAT)]
 
     # Inicializamos las Unidades Funcionales
     uf = [0, 0, 0]
-    uf[0] = UnidadFuncional(uso=-1, cont_ciclos=-1, tag=-1, opa=-1, opb=-1, operacion=-1, res=-1, res_ok=-1,
-                            clk_tick_ok=-1)
-    uf[1] = UnidadFuncional(uso=-1, cont_ciclos=-1, tag=-1, opa=-1, opb=-1, operacion=-1, res=-1, res_ok=-1,
-                            clk_tick_ok=-1)
-    uf[2] = UnidadFuncional(uso=-1, cont_ciclos=-1, tag=-1, opa=-1, opb=-1, operacion=-1, res=-1, res_ok=-1,
-                            clk_tick_ok=-1)
+    uf[0] = UnidadFuncional(uso=0, cont_ciclos=0, tag=0, opa=0, opb=0, operacion=0, res=0,
+                            res_ok=0, clk_tick_ok=0)
+    uf[1] = UnidadFuncional(uso=0, cont_ciclos=0, tag=0, opa=0, opb=0, operacion=0, res=0,
+                            res_ok=0, clk_tick_ok=0)
+    uf[2] = UnidadFuncional(uso=0, cont_ciclos=0, tag=0, opa=0, opb=0, operacion=0, res=0,
+                            res_ok=0, clk_tick_ok=0)
 
     # Inicializamos las Estaciones de Reserva (Cada unidad funcional tiene una)
     er = list()
@@ -576,8 +579,9 @@ if __name__ == '__main__':
 
     while inst_rob > 0 or inst_prog > 0:  # Un ciclo de reloj ejecuta las 5 etapas de procesamiento de un inst
         print()
-        print("---- CICLO " + str(
-            ciclo) + " -----------------------------------------------------------------------------------------------")
+        print("---- CICLO " + str(ciclo)
+                      + " ---------------------------------------------------------------"
+                        "-------------------------------")
         print()
         # Ejecutamos etapas
         datos = commit(datos)
@@ -588,7 +592,7 @@ if __name__ == '__main__':
         inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, pc, p_er_cola, ciclo = datos[6]
         registros, memoriadatos, instrucciones, uf, er, rob, otros = datos
 
-        print("FINAL: " + "inst_rob: " + str(inst_rob) + ", inst_prog: " + str(inst_prog))
+        # print("FINAL: " + "inst_rob: " + str(inst_rob) + ", inst_prog: " + str(inst_prog))
 
         # MOSTRAR EL CONTENIDO DE LAS ESTRUCTURAS
         imprime(uf, "uf")
