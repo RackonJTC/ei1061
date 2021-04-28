@@ -1,3 +1,8 @@
+import pandas as pd
+
+desired_width = 320
+pd.set_option('display.width', desired_width)
+
 # ******************************************************************************************************
 #    VARIABLES GLOBALES
 # ******************************************************************************************************
@@ -24,12 +29,14 @@ CICLOS_ALU = 1  # Suma y Resta
 CICLOS_MULT = 5  # Multiplicación
 ciclosEjecucion = [CICLOS_ALU, CICLOS_MEM, CICLOS_MULT]
 max = 0
-codUF = 0
 
 # Etapas de procesamiento de las instrucciones en rob
 ISS = 1
 EX = 2
 WB = 3
+COMMIT = 4
+codEtapa = ["---", "ID/ISS", "EX", "WB", "COMMIT"]
+
 
 # ******************************************************************************************************
 #    ESTRUCTURAS DE DATOS
@@ -72,7 +79,7 @@ class Registro:
         self.TAG_ROB = tag  # Si el contenido no es valido, indicar que linea de rob lo actualiza
 
     def __str__(self) -> str:
-        cadena = str(self.contenido) + "\t" + str(self.ok) + "\t" + str(self.clk_tick_ok) + "\t" + str(self.TAG_ROB)
+        cadena = " " + str(self.contenido) + "\t" + str(self.ok) + "\t" + str(self.clk_tick_ok) + "\t" + str(self.TAG_ROB)
         return cadena
 
     def libre(self):
@@ -116,15 +123,15 @@ class BufferReordenamiento:
         self.etapa = etapa  # Etapa de procesamiento de la instrucción ISS, EX, WB
 
     def __str__(self) -> str:
-        cadena = str(self.TAG_ROB) + "\t" + str(self.linea_valida) + "\t" + str(self.destino[0]) + "\t" \
+        cadena = str(self.TAG_ROB) + "\t" + str(self.linea_valida) + "\t" + str(self.destino) + "\t" \
                  + str(self.valor) + "\t" + str(self.valor_ok) + "\t" + str(self.clk_tick_ok) + "\t" \
-                 + str(self.etapa)
+                 + codEtapa[self.etapa]
         return cadena
 
     def libera(self):
         self.TAG_ROB = None
         self.linea_valida = 0
-        self.destino = [0, 0, 0, 0]
+        self.destino = 0
         self.valor = 0
         self.valor_ok = 0
         self.clk_tick_ok = 0
@@ -171,20 +178,22 @@ def commit(listadatos):
     registros, memoriadatos, instrucciones, uf, er, rob, otros = listadatos
     inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, pc, p_er_cola, ciclo = otros
 
-    if rob[p_rob_cabeza].linea_valida == 1 and rob[p_rob_cabeza].etapa == 3:
-        id_reg = rob[p_rob_cabeza].destino[0]
-        # if rob[p_rob_cabeza].TAG_ROB == registros[id_reg].TAG_ROB and
-        # registros[id_reg].contenido = rob[p_rob_cabeza].valor
-        registros[id_reg].contenido = actualiza(rob[p_rob_cabeza].destino)
-        registros[id_reg].ok = 1
-        registros[id_reg].clk_tick_ok = ciclo + 1
-        registros[id_reg].libre()
-        if inst_rob == 1:
-            registros[0].libre()
+    rob_ = rob[p_rob_cabeza]
+    if rob_.linea_valida and rob_.etapa == WB:
 
-        rob[p_rob_cabeza].libera()
+        if "T=" in str(rob_.destino):
+            rob_.destino = rob[int(rob_.destino.strip("T="))].valor
 
+        if rob_.destino > 0:
+            registros[rob_.destino].contenido = rob_.valor
+            registros[rob_.destino].ok = 1
+            registros[rob_.destino].clk_tick_ok = ciclo + 1
+            registros[rob_.destino].TAG_ROB = -1
+
+        rob_.etapa = 4
+        rob_.linea_valida = 0
         p_rob_cabeza += 1
+        print("Hola?: " + str(inst_rob))
         inst_rob -= 1
 
     ciclo += 1
@@ -203,42 +212,46 @@ def wb(datos):
     bucle = 0
 
     while bucle == 0 and i < TOTAL_UF:
-        if uf[i].operacion == 4 and uf[i].res_ok == 1:
-            rob[uf[i].TAG_ROB].etapa = WB  # WB
-            # Se deja libre la uf
-            uf[i].libera()
-            # Se ha escrito un dato. No se pueden escribir más.
-            bucle = 1
-        elif uf[i].uso == 1 and uf[i].res_ok == 1 and uf[i].clk_tick_ok <= ciclo:
+        uf_ = uf[i]
+        if uf_.uso == 1 and uf_.res_ok == 1 and uf_.clk_tick_ok <= ciclo:
             # Se actualiza rob
-            id = uf[i].TAG_ROB
-            rob[id].valor = uf[i].res
+            id = uf_.TAG_ROB
+            rob[id].valor = uf_.res
             rob[id].valor_ok = 1
             rob[id].clk_tick_ok = ciclo + 1
-            rob[id].etapa = 3  # WB = 3
+            rob[id].etapa = WB  # WB = 3
+
+            if uf_.operacion == 4:  # Si es sw
+                if "T=" in str(rob[id].destino):
+                    memoriadatos[uf_.res] = rob[int(rob[id].destino.strip("T="))].valor
+                else:
+                    print(uf_.res)
+                    memoriadatos[uf_.res] = memoriadatos[uf_.res] = -rob[id].destino
+                uf_.libera()
 
             # Se deja libre la uf
-            uf[i].libera()
+            uf_.libera()
 
-            # Se ha escrito un dato. No se pueden escribir más.
-            bucle = 1
+            # # Se ha escrito un dato. No se pueden escribir más.
+            # bucle = 1
 
             for k in range(TOTAL_UF):
+                er_ = er[k]
                 fin = p_er_cola[k]
-                for j in range(fin):
+                j = 0
+                while j < fin:
                     # Si el operando depende de ese resultado
-                    if er[k][j].linea_valida == 1:  # Si la linea es valida
-                        if er[k][j].opa_ok == 0 and er[k][j].opa == id:  # Si opa no disponible y depende de TAG_ROB
-                            er[k][j].opa = uf[i].res
-                            er[k][j].opa_ok = 1
-                            er[k][j].clk_tick_ok_a = ciclo + 1
-                        if er[k][j].opb_ok == 0 and er[k][j].opb == id:  # Si opb depende de ese resultado
-                            er[k][j].opB = uf[i].res
-                            er[k][j].opb_ok = 1
-                            er[k][j].clk_tick_ok_b = ciclo + 1
+                    if er_[j].opa_ok == 0 and er_[j].opa == id:  # Si opa no disponible y depende de TAG_ROB
+                        er_[j].opa = rob[id].valor
+                        er_[j].opa_ok = 1
+                        er_[j].clk_tick_ok_a = ciclo + 1
+                    if er_[j].opb_ok == 0 and er_[j].opb == id:  # Si opb depende de ese resultado
+                        er_[j].opb = rob[id].valor
+                        er_[j].opb_ok = 1
+                        er_[j].clk_tick_ok_b = ciclo + 1
+                    j += 1
 
-        else:
-            i += 1
+        i += 1
 
     otros = [inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, pc, p_er_cola, ciclo]
     datos = [registros, memoriadatos, instrucciones, uf, er, rob, otros]
@@ -247,7 +260,7 @@ def wb(datos):
 
 def ex(datos):
     global max
-    global codUF
+
     registros, memoriadatos, instrucciones, uf, er, rob, otros = datos
     inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, pc, p_er_cola, ciclo = otros
     i = 0
@@ -255,32 +268,32 @@ def ex(datos):
 
     while i < TOTAL_UF:
         # Establecer cilos máximos para cada uf
+        uf_ = uf[i]
         if i == 0:
             max = CICLOS_ALU
         elif i == 1:
             max = CICLOS_MEM
         elif i == 2:
             max = CICLOS_MULT
-        if uf[i].uso == 1:  # si está en uso, se incrementa el ciclo y no se pueden enviar otra instrucción.
-            if uf[i].cont_ciclos < max:
-                uf[i].cont_ciclos = uf[i].cont_ciclos + 1  # incrementar el ciclo
+        if uf_.uso == 1:  # si está en uso, se incrementa el ciclo y no se pueden enviar otra instrucción.
+            if uf_.cont_ciclos < max:
+                uf_.cont_ciclos += 1  # incrementar el ciclo
 
-                if uf[i].cont_ciclos == max:  # si se ha finalizado la operación genera resultado y valida. uf_.oper
-                    # Este dato solo se podrá utilizar en el siguiente ciclo después de haberlo generado
-                    if uf[i].operacion == 1:  # add
-                        uf[i].res = uf[i].opa + uf[i].opb
-                    elif uf[i].operacion == 2:  # sub
-                        uf[i].res = uf[i].opa - uf[i].opb
-                    elif uf[i].operacion == 3:  # lw. En opb esta la direccion de memoria de datos
-                        uf[i].res = memoriadatos[uf[i].opb]
-                    elif uf[i].operacion == 4:  # sw. En opb esta la direccion de memoria de datos
-                        # (MEM(inm+(rs))) = (rt)
-                        memoriadatos[uf[i].opa] = registros[uf[i].opb].contenido
-                    elif uf[i].operacion == 5:  # mult
-                        uf[i].res = uf[i].opa * uf[i].opb
+            if uf_.cont_ciclos == max:  # si se ha finalizado la operación genera resultado y valida. uf_.oper
+                # Este dato solo se podrá utilizar en el siguiente ciclo después de haberlo generado
+                if uf_.operacion == 1:  # add
+                    uf_.res = uf_.opa + uf_.opb
+                elif uf_.operacion == 2:  # sub
+                    uf_.res = uf_.opa - uf_.opb
+                elif uf_.operacion == 3:  # lw. En opb esta la direccion de memoria de datos
+                    uf_.res = uf_.opa + uf_.opb
+                elif uf_.operacion == 4:  # sw. En opb esta la direccion de memoria de datos
+                    uf_.res = uf_.opa + uf_.opb
+                elif uf_.operacion == 5:  # mult
+                    uf_.res = uf_.opa * uf_.opb
 
-                    uf[i].res_ok = 1
-                    uf[i].clk_tick_ok = ciclo + 1
+                uf_.res_ok = 1
+                uf_.clk_tick_ok = ciclo + 1
 
         elif enviar == 0:  # no está en uso y todavía no se ha enviado ninguna instrucción
             # se comprueba si se puede enviar alguna de este tipo
@@ -289,31 +302,26 @@ def ex(datos):
             j = 0  # contador de líneas de er[i] desde 0 hasta fin
 
             while enviar == 0 and j < fin:  # búsqueda de instrucción a ejecutar en todas las líneas validas de er_
-                if er_[j].linea_valida == 1:  # línea válida. comprueba si los operandos están disponibles
-                    if er_[j].opa_ok == 1 and er_[j].clk_tick_ok_a <= ciclo and er_[j].opb_ok == 1 \
-                            and er_[j].clk_tick_ok_b <= ciclo:  # operandos disponibles
-                        if er_[j].operacion == 1 or er_[j].operacion == 2:
-                            codUF = 0
-                        elif er_[j].operacion == 3 or er_[j].operacion == 4:
-                            codUF = 1
-                        elif er_[j].operacion == 5:
-                            codUF = 2
-                        uf[codUF] = 0
-                        uf[codUF] = UnidadFuncional(uso=1, cont_ciclos=0, tag=er_[j].TAG_ROB, opa=er_[j].opa,
-                                                    opb=er_[j].opb, operacion=er_[j].operacion, res=0, res_ok=0,
-                                                    clk_tick_ok=0)
+                er_j = er_[j]
+                if er_j.linea_valida == 1:  # línea válida. comprueba si los operandos están disponibles
+                    if er_j.opa_ok and er_j.clk_tick_ok_a <= ciclo:
+                        if er_j.opb_ok and er_j.clk_tick_ok_b <= ciclo:  # operandos disponibles
+                            uf_.uso = 1
+                            uf_.cont_ciclos = 1
+                            if er_j.operacion == 1 or er_j.operacion == 2 or er_j.operacion == 5:
+                                uf_.opa = er_j.opa
+                                uf_.opb = er_j.opb
+                            elif er_j.operacion == 3 or er_j.operacion == 4:
+                                uf_.opa = er_j.opa
+                                uf_.opb = er_j.inmediato
 
-                        if er_[j].operacion == 3 or er_[j].operacion == 4:
-                            uf[i].opa = registros[er_[j].opa].contenido + er_[j].inmediato
+                            uf_.TAG_ROB = er_j.TAG_ROB
+                            uf_.operacion = er_j.operacion
+                            rob[uf_.TAG_ROB].etapa = EX  # Actualizar en etapa en rob a EX
+                            enviar = 1
+                            er_j.linea_valida = 0
 
-                        rob[er[i][j].TAG_ROB].etapa = 2  # Actualizar en etapa en rob a EX
-                        er[i][j].linea_valida = 0
-                        enviar = 1
-
-                    else:
-                        j += 1
-                else:  # buscar otra instrucción
-                    j += 1
+                j += 1
         i += 1
 
     otros = [inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, pc, p_er_cola, ciclo]
@@ -328,65 +336,66 @@ def idiss(datos):
     if inst_prog > 0:
         # Cogemos la intruccione en la ER correspondiente (se omite IF)
         inst = instrucciones[pc]
-        inst.imprime()
-        # Actualizamos linea
-        er[inst.tipoUF][p_er_cola[inst.tipoUF]] = EstacionReserva(linea_valida=0, tag=0, operacion=0, opa=0, opa_ok=1,
-                                                                  clk_tick_ok_a=0, opb=0, opb_ok=0, clk_tick_ok_b=0,
-                                                                  inmediato=0)
-        er[inst.tipoUF][p_er_cola[inst.tipoUF]].linea_valida = 1
 
-        er[inst.tipoUF][p_er_cola[inst.tipoUF]].operacion = inst.cod
+        # Actualizamos linea
+        er_ = er[inst.tipoUF][p_er_cola[inst.tipoUF]]
+        er_.linea_valida = 1
+        er_.operacion = inst.cod
 
         if registros[inst.rs].ok == 1:
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opa = registros[inst.rs].contenido
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opa_ok = 1
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].clk_tick_ok_a = ciclo + 1
-        else:
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opa = registros[inst.rs].TAG_ROB
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opa_ok = 0
+            er_.opa = registros[inst.rs].contenido
+            er_.opa_ok = 1
+            er_.clk_tick_ok_a = ciclo + 1
+        else:  # ROB
+            er_.opa = registros[inst.rs].TAG_ROB
+            er_.opa_ok = 0
 
         if registros[inst.rt].ok == 1:
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opb = registros[inst.rt].contenido
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opb_ok = 1
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].clk_tick_ok_b = ciclo + 1
-        else:
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opb = registros[inst.rt].TAG_ROB
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opb_ok = 0
+            er_.opb = registros[inst.rt].contenido
+            er_.opb_ok = 1
+            er_.clk_tick_ok_b = ciclo + 1
+        else:  # ROB
+            er_.opb = registros[inst.rt].TAG_ROB
+            er_.opb_ok = 0
 
-        if inst.cod == 4 or inst.cod == 3:
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opb = inst.rt
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opa = inst.rs
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opa_ok = 1
-            er[inst.tipoUF][p_er_cola[inst.tipoUF]].opb_ok = 1
+        er_.inmediato = inst.inmediato
 
-        er[inst.tipoUF][p_er_cola[inst.tipoUF]].inmediato = inst.inmediato
+        p_er_cola[inst.tipoUF] += 1
 
         # Añadir instrucción en rob y actualizar todos sus campos. Posición apuntada por p_rob_cola
         # si instrucción es sw poner en el campo destino un 0 para identificar que no se escribe nada en etapa commit
         # rob -> def __init__(self, TAG_ROB, linea_valida, destino, valor, valor_ok, clk_tick_ok, etapa):
 
-        inst_rob += 1
+        rob_ = rob[p_rob_cola]
+        rob_.linea_valida = 1
+        rob_.destino = inst.rd
 
-        rob[p_rob_cola].TAG_ROB = p_rob_cola
-        rob[p_rob_cola].linea_valida = 1
-        rob[p_rob_cola].etapa = ISS
-
-        if inst.cod == 3 or inst.cod == 4:
-            rob[p_rob_cola].destino = [inst.rt, registros[inst.rs].contenido + inst.inmediato, inst.rt, inst.cod]
-        else:
-            rob[p_rob_cola].destino = [inst.rd, inst.rs, inst.rt, inst.cod]
+        if inst.cod == 3:  # lw
+            rob_.destino = inst.rt
+        elif inst.cod == 4:  # sw
+            if registros[inst.rt].ok == 1:
+                rob_.destino = -inst.rt
+            else:
+                rob_.destino = "T=" + str(registros[inst.rt].TAG_ROB)
 
         # Invalidar el registro destino de esta instrucción
-        registros[inst.rd].ok = 0
-        registros[inst.rd].TAG_ROB = p_rob_cola
-        er[inst.tipoUF][p_er_cola[inst.tipoUF]].TAG_ROB = p_rob_cola
+        rob_.valor_ok = 0
+        rob_.etapa = ISS
+        inst_rob += 1
+        er_.TAG_ROB = rob_.TAG_ROB
 
-        p_er_cola[inst.tipoUF] += 1
         p_rob_cola += 1
+        if inst.cod != 4:  # sw
+            if inst.cod == 3:  # lw
+                registros[inst.rt].ok = 0
+                registros[inst.rt].TAG_ROB = rob_.TAG_ROB
+            else:
+                registros[inst.rd].ok = 0
+                registros[inst.rd].TAG_ROB = rob_.TAG_ROB
 
         # Actualiza pc + 1 y inst_prog - 1
         pc += 1
-        inst_prog = inst_prog - 1
+        inst_prog -= 1
 
     otros = [inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, pc, p_er_cola, ciclo]
     datos = [registros, memoriadatos, instrucciones, uf, er, rob, otros]
@@ -434,6 +443,7 @@ def imprime(unidad, tipo):
         for i in range(len(unidad) - len(unidad) // 3, len(unidad)):
             print("M" + str(i) + ": " + unidad[i].__str__() + ",", end=' ')
 
+
 # ******************************************************************************************************
 #    METODO DE ENTRADA Y SALIDA
 # ******************************************************************************************************
@@ -453,21 +463,6 @@ def leerfichero(fichero):
         memIns.append(linea.rstrip())
         i += 1
     return memIns
-
-
-def actualiza(destino):
-    if destino[3] == 1:
-        return registros[destino[1]].contenido + registros[destino[2]].contenido
-    if destino[3] == 2:
-        return registros[destino[1]].contenido - registros[destino[2]].contenido
-    if destino[3] == 3:
-        return memoriadatos[destino[1]]
-    if destino[3] == 4:
-        memoriadatos[destino[1]] = registros[destino[0]].contenido
-        return registros[destino[0]].contenido
-    if destino[3] == 5:
-        return registros[destino[1]].contenido * registros[destino[2]].contenido
-
 
 def cargainstruccionesmemoria(entrada):
     instrucciones = list()
@@ -495,15 +490,15 @@ def cargainstruccionesmemoria(entrada):
             inst = Instruccion(cod=cod, rd=int(elem[1][1:-1]), rs=int(elem[2][1:-1]), rt=int(elem[3][1:]), inmediato=0,
                                num=i, tipouf=tipouf)
 
-        # Añadir NOPS automaticos
-
-        if len(instrucciones) != 0:
-            ant = instrucciones[-1]
-            if ant.cod == 3 or ant.cod == 4:
-                if inst.cod == 1 or inst.cod == 2 or ant.cod == 5:
-                    if inst.rt == ant.rt or inst.rs == ant.rt:
-                        instrucciones.append(
-                            Instruccion(cod=0, rd=0, rs=0, rt=0, inmediato=0, num=i, tipouf=tipouf))
+        # # Añadir NOPS automaticos
+        #
+        # if len(instrucciones) != 0:
+        #     ant = instrucciones[-1]
+        #     if ant.cod == 3 or ant.cod == 4:
+        #         if inst.cod == 1 or inst.cod == 2 or ant.cod == 5:
+        #             if inst.rt == ant.rt or inst.rs == ant.rt:
+        #                 instrucciones.append(
+        #                     Instruccion(cod=0, rd=0, rs=0, rt=0, inmediato=0, num=i, tipouf=tipouf))
 
         instrucciones.append(inst)
         i += 1
@@ -522,7 +517,7 @@ if __name__ == '__main__':
     # **************************************************************************************************
 
     # Cargamos las instrucciones desde el fichero
-    entrada = [a for a in leerfichero("instrucciones13")]
+    entrada = [a for a in leerfichero("instruccionesM")]
     instrucciones, acaba = cargainstruccionesmemoria(entrada)
     for elem in instrucciones:
         print(elem.__str__())
@@ -532,26 +527,33 @@ if __name__ == '__main__':
     # Banco de Registros, r0=10, r1=20, r2=30, ...
     registros = list()
     for i in range(REG):
-        registros.append(Registro(contenido=(i + 1) * 10, ok=1, clk_tick_ok=0, tag=0))
+        registros.append(Registro(contenido=i+1, ok=1, clk_tick_ok=-1, tag=-1))
 
     # Memoria de datos
-    memoriadatos = [33 for a in range(0, DAT)]
+    memoriadatos = [a for a in range(-1, DAT)]
 
     # Inicializamos las Unidades Funcionales
-    uf = [a for a in range(0, TOTAL_UF)]
-    uf[0] = UnidadFuncional(uso=0, cont_ciclos=0, tag=0, opa=0, opb=0, operacion=0, res=0, res_ok=0, clk_tick_ok=0)
-    uf[1] = UnidadFuncional(uso=0, cont_ciclos=0, tag=0, opa=0, opb=0, operacion=0, res=0, res_ok=0, clk_tick_ok=0)
-    uf[2] = UnidadFuncional(uso=0, cont_ciclos=0, tag=0, opa=0, opb=0, operacion=0, res=0, res_ok=0, clk_tick_ok=0)
+    uf = [0, 0, 0]
+    uf[0] = UnidadFuncional(uso=-1, cont_ciclos=-1, tag=-1, opa=-1, opb=-1, operacion=-1, res=-1, res_ok=-1,
+                            clk_tick_ok=-1)
+    uf[1] = UnidadFuncional(uso=-1, cont_ciclos=-1, tag=-1, opa=-1, opb=-1, operacion=-1, res=-1, res_ok=-1,
+                            clk_tick_ok=-1)
+    uf[2] = UnidadFuncional(uso=-1, cont_ciclos=-1, tag=-1, opa=-1, opb=-1, operacion=-1, res=-1, res_ok=-1,
+                            clk_tick_ok=-1)
 
     # Inicializamos las Estaciones de Reserva (Cada unidad funcional tiene una)
-    er = [a for a in range(0, TOTAL_UF)]
-    for i in range(len(er)):
-        er[i] = [a for a in range(0, 32)]
+    er = list()
+    for i in range(TOTAL_UF):
+        er.append(list())
+        for j in range(INS):
+            er[i].append(
+                EstacionReserva(linea_valida=-1, tag=-1, operacion=-1, opa=-1, opa_ok=1, clk_tick_ok_a=-1, opb=-1,
+                                opb_ok=-1, clk_tick_ok_b=-1, inmediato=-1))
 
     # Inicializamos el BufferReordenamiento
     rob = list()
     for i in range(INS):
-        rob.append(BufferReordenamiento(0, 0, [0, 0, 0, 0], 0, 0, 0, 0))
+        rob.append(BufferReordenamiento(i, 0, -1, -1, -1, -1, 0))
 
     inst_prog = len(instrucciones)  # total instrucciones programa
     inst_rob = 0  # instrucciones en rob
@@ -560,7 +562,7 @@ if __name__ == '__main__':
     p_rob_cola = 0  # puntero a las posiciones de rob para introducir (cola) o retirar instrucciones (cabeza)
     pc = 0  # puntero a memoria de instrucciones, siguiente instrucción a IF
     p_er_cola = [0, 0, 0]  # vector de punteros que apuntan a la cola de cada una de las UnidadFuncional
-    ciclo = 0
+    ciclo = 1
 
     # ******************************************************************************************************
     #    SIMULADOR
@@ -586,7 +588,7 @@ if __name__ == '__main__':
         inst_prog, inst_rob, p_rob_cabeza, p_rob_cola, pc, p_er_cola, ciclo = datos[6]
         registros, memoriadatos, instrucciones, uf, er, rob, otros = datos
 
-        # print("FINAL: " + "inst_rob: " + str(inst_rob) + ", inst_prog: " + str(inst_prog))
+        print("FINAL: " + "inst_rob: " + str(inst_rob) + ", inst_prog: " + str(inst_prog))
 
         # MOSTRAR EL CONTENIDO DE LAS ESTRUCTURAS
         imprime(uf, "uf")
