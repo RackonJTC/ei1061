@@ -1,5 +1,6 @@
 import pandas as pd
 
+# El pandas es solo para que se vea bien en la consola al imprimir, y no se corte
 desired_width = 320
 pd.set_option('display.width', desired_width)
 
@@ -129,20 +130,22 @@ class BufferReordenamiento:
         self.etapa = etapa  # Etapa de procesamiento de la instrucción ISS, EX, WB
 
     def __str__(self) -> str:
-        dest = "R" + str(self.destino)
-        val = self.valor
+        dest = " R" + str(self.destino)
+        val = "  " + str(self.valor)
         valOk = self.valor_ok
-        clkOk = self.clk_tick_ok
+        clkOk = "  " + str(self.clk_tick_ok)
         if self.destino == -1:
             dest = "-"
+        if type(self.destino) is list:
+            dest = "TagR" + str(self.destino[1])
         if self.valor == -1:
-            val = "S/N"
+            val = " S/N"
         if self.valor_ok == -1:
-            valOk = "-"
+            valOk = " -"
         if self.clk_tick_ok == -1:
-            clkOk = "-"
+            clkOk = "  -"
         cadena = str(self.TAG_ROB) + "\t" + str(self.linea_valida) + "\t" + str(dest) + "\t" \
-                 + str(val) + "\t" + str(valOk) + "\t" + str(clkOk) + "\t" \
+                 + str(val) + "\t " + str(valOk) + "\t" + str(clkOk) + "\t" \
                  + codEtapa[self.etapa]
         return cadena
 
@@ -193,8 +196,8 @@ def commit(listadatos):
     rob_ = rob[p_rob_cabeza]
     if rob_.linea_valida and rob_.etapa == WB:
 
-        if "R" in str(rob_.destino):
-            rob_.destino = rob[int(rob_.destino.strip("R"))].valor
+        if type(rob_.destino) is list:
+            rob_.destino = rob[rob_.destino[1]].valor
 
         if rob_.destino > 0:
             registros[rob_.destino].contenido = rob_.valor
@@ -233,8 +236,8 @@ def wb(datos):
             rob[id].etapa = WB  # WB = 3
 
             if uf_.operacion == 4:  # Si es sw
-                if "R" in str(rob[id].destino):
-                    memoriadatos[uf_.res] = rob[int(rob[id].destino.strip("R"))].valor
+                if type(rob[id].destino) is list:
+                    memoriadatos[uf_.res] = rob[rob[id].destino[1]].valor
                 else:
                     print(uf_.res)
                     memoriadatos[uf_.res] = memoriadatos[uf_.res] = -rob[id].destino
@@ -387,7 +390,7 @@ def idiss(datos):
             if registros[inst.rt].ok == 1:
                 rob_.destino = -inst.rt
             else:
-                rob_.destino = "R" + str(registros[inst.rt].TAG_ROB)
+                rob_.destino = [False, registros[inst.rt].TAG_ROB]
 
         # Invalidar el registro destino de esta instrucción
         rob_.valor_ok = 0
@@ -530,10 +533,10 @@ if __name__ == '__main__':
     # Banco de Registros, r0=10, r1=20, r2=30, ...
     registros = list()
     for i in range(REG):
-        registros.append(Registro(contenido=i + 1, ok=1, clk_tick_ok=-1, tag=-1))
+        registros.append(Registro(contenido=(i + 1) * 2, ok=1, clk_tick_ok=-1, tag=-1))
 
     # Memoria de datos
-    memoriadatos = [a for a in range(0, DAT)]
+    memoriadatos = [(a + 1) * 2 for a in range(0, DAT)]
 
     # Inicializamos las Unidades Funcionales
     uf = [0, 0, 0]
@@ -580,8 +583,7 @@ if __name__ == '__main__':
     while inst_rob > 0 or inst_prog > 0:  # Un ciclo de reloj ejecuta las 5 etapas de procesamiento de un inst
         print()
         print("---- CICLO " + str(ciclo)
-                      + " ---------------------------------------------------------------"
-                        "-------------------------------")
+              + " ----------------------------------------------------------------------------------------------")
         print()
         # Ejecutamos etapas
         datos = commit(datos)
